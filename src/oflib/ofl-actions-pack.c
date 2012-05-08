@@ -33,6 +33,7 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../lib/oxm-match.h"
 #include "ofl.h"
 #include "ofl-utils.h"
 #include "ofl-actions.h"
@@ -50,30 +51,10 @@ ofl_actions_ofp_len(struct ofl_action_header *action, struct ofl_exp *exp) {
     switch (action->type) {
         case OFPAT_OUTPUT:
             return sizeof(struct ofp_action_output);
-        case OFPAT_SET_VLAN_VID:
-            return sizeof(struct ofp_action_vlan_vid);
-        case OFPAT_SET_VLAN_PCP:
-            return sizeof(struct ofp_action_vlan_pcp);
-        case OFPAT_SET_DL_SRC:
-        case OFPAT_SET_DL_DST:
-            return sizeof(struct ofp_action_dl_addr);
-        case OFPAT_SET_NW_SRC:
-        case OFPAT_SET_NW_DST:
-            return sizeof(struct ofp_action_nw_addr);
-        case OFPAT_SET_NW_TOS:
-            return sizeof(struct ofp_action_nw_tos);
-        case OFPAT_SET_NW_ECN:
-            return sizeof(struct ofp_action_nw_ecn);
-        case OFPAT_SET_TP_SRC:
-        case OFPAT_SET_TP_DST:
-            return sizeof(struct ofp_action_tp_port);
+       
         case OFPAT_COPY_TTL_OUT:
         case OFPAT_COPY_TTL_IN:
             return sizeof(struct ofp_action_header);
-        case OFPAT_SET_MPLS_LABEL:
-            return sizeof(struct ofp_action_mpls_label);
-        case OFPAT_SET_MPLS_TC:
-            return sizeof(struct ofp_action_mpls_tc);
         case OFPAT_SET_MPLS_TTL:
             return sizeof(struct ofp_action_mpls_ttl);
         case OFPAT_DEC_MPLS_TTL:
@@ -94,6 +75,10 @@ ofl_actions_ofp_len(struct ofl_action_header *action, struct ofl_exp *exp) {
             return sizeof(struct ofp_action_nw_ttl);
         case OFPAT_DEC_NW_TTL:
             return sizeof(struct ofp_action_header);
+        case OFPAT_SET_FIELD: {
+            struct ofl_action_set_field  *a = (struct ofl_action_set_field  *) action;  
+            return ROUND_UP(sizeof(struct ofp_action_set_field) -4 + a->len,8) ;
+        }    
         case OFPAT_EXPERIMENTER: {
             if (exp == NULL || exp->act == NULL || exp->act->ofp_len == NULL) {
                 OFL_LOG_WARN(LOG_MODULE, "requesting experimenter length, but no callback was given.");
@@ -116,7 +101,7 @@ ofl_actions_ofp_total_len(struct ofl_action_header **actions,
 }
 
 size_t
-ofl_actions_pack(struct ofl_action_header *src, struct ofp_action_header *dst, struct ofl_exp *exp) {
+ofl_actions_pack(struct ofl_action_header *src, struct ofp_action_header *dst, uint8_t* data,  struct ofl_exp *exp) {
 
     dst->type = htons(src->type);
     memset(dst->pad, 0x00, 4);
@@ -132,93 +117,13 @@ ofl_actions_pack(struct ofl_action_header *src, struct ofp_action_header *dst, s
             memset(da->pad, 0x00, 6);
             return sizeof(struct ofp_action_output);
         }
-        case OFPAT_SET_VLAN_VID: {
-            struct ofl_action_vlan_vid *sa = (struct ofl_action_vlan_vid *)src;
-            struct ofp_action_vlan_vid *da = (struct ofp_action_vlan_vid *)dst;
-
-            da->len =      htons(sizeof(struct ofp_action_vlan_vid));
-            da->vlan_vid = htons(sa->vlan_vid);
-            memset(da->pad, 0x00, 2);
-            return sizeof(struct ofp_action_vlan_vid);
-        }
-        case OFPAT_SET_VLAN_PCP: {
-            struct ofl_action_vlan_pcp *sa = (struct ofl_action_vlan_pcp *)src;
-            struct ofp_action_vlan_pcp *da = (struct ofp_action_vlan_pcp *)dst;
-
-            da->len =      htons(sizeof(struct ofp_action_vlan_pcp));
-            da->vlan_pcp = sa->vlan_pcp;
-            memset(da->pad, 0x00, 3);
-            return sizeof(struct ofp_action_vlan_pcp);
-        }
-        case OFPAT_SET_DL_SRC:
-        case OFPAT_SET_DL_DST: {
-            struct ofl_action_dl_addr *sa = (struct ofl_action_dl_addr *)src;
-            struct ofp_action_dl_addr *da = (struct ofp_action_dl_addr *)dst;
-
-            da->len = htons(sizeof(struct ofp_action_dl_addr));
-            memcpy(&(da->dl_addr), &(sa->dl_addr), OFP_ETH_ALEN);
-            memset(da->pad, 0x00, 6);
-            return sizeof(struct ofp_action_dl_addr);
-        }
-        case OFPAT_SET_NW_SRC:
-        case OFPAT_SET_NW_DST: {
-            struct ofl_action_nw_addr *sa = (struct ofl_action_nw_addr *)src;
-            struct ofp_action_nw_addr *da = (struct ofp_action_nw_addr *)dst;
-
-            da->len =     htons(sizeof(struct ofp_action_nw_addr));
-            da->nw_addr = sa->nw_addr;
-            return sizeof(struct ofp_action_nw_addr);
-        }
-        case OFPAT_SET_NW_TOS: {
-            struct ofl_action_nw_tos *sa = (struct ofl_action_nw_tos *)src;
-            struct ofp_action_nw_tos *da = (struct ofp_action_nw_tos *)dst;
-
-            da->len =    htons(sizeof(struct ofp_action_nw_tos));
-            da->nw_tos = sa->nw_tos;
-            memset(da->pad, 0x00, 3);
-            return sizeof(struct ofp_action_nw_tos);
-        }
-        case OFPAT_SET_NW_ECN: {
-            struct ofl_action_nw_ecn *sa = (struct ofl_action_nw_ecn *)src;
-            struct ofp_action_nw_ecn *da = (struct ofp_action_nw_ecn *)dst;
-
-            da->len =    htons(sizeof(struct ofp_action_nw_ecn));
-            da->nw_ecn = sa->nw_ecn;
-            memset(da->pad, 0x00, 3);
-            return sizeof(struct ofp_action_nw_ecn);
-        }
-        case OFPAT_SET_TP_SRC:
-        case OFPAT_SET_TP_DST: {
-            struct ofl_action_tp_port *sa = (struct ofl_action_tp_port *)src;
-            struct ofp_action_tp_port *da = (struct ofp_action_tp_port *)dst;
-
-            da->len =     htons(sizeof(struct ofp_action_tp_port));
-            da->tp_port = htons(sa->tp_port);
-            memset(da->pad, 0x00, 2);
-            return sizeof(struct ofp_action_tp_port);
-        }
+      
         case OFPAT_COPY_TTL_OUT:
         case OFPAT_COPY_TTL_IN: {
             dst->len = htons(sizeof(struct ofp_action_header));
             return sizeof(struct ofp_action_header);
         }
-        case OFPAT_SET_MPLS_LABEL: {
-            struct ofl_action_mpls_label *sa = (struct ofl_action_mpls_label *)src;
-            struct ofp_action_mpls_label *da = (struct ofp_action_mpls_label *)dst;
-
-            da->len =        htons(sizeof(struct ofp_action_mpls_label));
-            da->mpls_label = htonl(sa->mpls_label);
-            return sizeof(struct ofp_action_mpls_label);
-        }
-        case OFPAT_SET_MPLS_TC: {
-            struct ofl_action_mpls_tc *sa = (struct ofl_action_mpls_tc *)src;
-            struct ofp_action_mpls_tc *da = (struct ofp_action_mpls_tc *)dst;
-
-            da->len =     htons(sizeof(struct ofp_action_mpls_tc));
-            da->mpls_tc = sa->mpls_tc;
-            memset(da->pad, 0x00, 3);
-            return sizeof(struct ofp_action_mpls_tc);
-        }
+      
         case OFPAT_SET_MPLS_TTL: {
             struct ofl_action_mpls_ttl *sa = (struct ofl_action_mpls_ttl *)src;
             struct ofp_action_mpls_ttl *da = (struct ofp_action_mpls_ttl *)dst;
@@ -285,6 +190,18 @@ ofl_actions_pack(struct ofl_action_header *src, struct ofp_action_header *dst, s
         case OFPAT_DEC_NW_TTL: {
             dst->len = htons(sizeof(struct ofp_action_header));
             return sizeof(struct ofp_action_header);
+        }
+        case OFPAT_SET_FIELD: {
+            struct ofl_action_set_field *sa = (struct ofl_action_set_field *) src;
+            struct ofp_action_set_field *da = (struct ofp_action_set_field *) dst;
+
+            da->len = htons(sizeof(struct ofp_action_set_field) + ROUND_UP(OXM_LENGTH(sa->field),8));
+            memset(data + (sizeof(struct ofp_action_set_field)- 4),0,ntohs(da->len));
+            /*Put OXM header in the field*/
+            memcpy(da->field, &sa->field, 4);            
+            memcpy(data + (sizeof(struct ofp_action_set_field)), sa->value,OXM_LENGTH(sa->field));
+            return sizeof(ntohs((da->len)));
+        
         }
         case OFPAT_EXPERIMENTER: {
             if (exp == NULL || exp->act == NULL || exp->act->pack == NULL) {

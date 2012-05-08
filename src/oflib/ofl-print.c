@@ -144,7 +144,7 @@ ofl_vlan_vid_to_string(uint32_t vid) {
 void
 ofl_vlan_vid_print(FILE *stream, uint32_t vid) {
     switch (vid) {
-        case (OFPVID_ANY): {  fprintf(stream, "any"); return; }
+        case (OFPVID_PRESENT): {  fprintf(stream, "any"); return; }
         case (OFPVID_NONE): { fprintf(stream, "none"); return; }
         default: {            fprintf(stream, "%u", vid); return; }
     }
@@ -167,20 +167,9 @@ void
 ofl_action_type_print(FILE *stream, uint16_t type) {
     switch (type) {
         case OFPAT_OUTPUT: {   fprintf(stream, "out"); return; }
-        case OFPAT_SET_VLAN_VID: {   fprintf(stream, "vlan_vid"); return; }
-        case OFPAT_SET_VLAN_PCP: {   fprintf(stream, "vlan_pcp"); return; }
-        case OFPAT_SET_DL_SRC: {     fprintf(stream, "dl_src"); return; }
-        case OFPAT_SET_DL_DST: {     fprintf(stream, "dl_dst"); return; }
-        case OFPAT_SET_NW_SRC: {     fprintf(stream, "nw_src"); return; }
-        case OFPAT_SET_NW_DST: {     fprintf(stream, "nw_dst"); return; }
-        case OFPAT_SET_NW_TOS: {     fprintf(stream, "nw_tos"); return; }
-        case OFPAT_SET_NW_ECN: {     fprintf(stream, "nw_ecn"); return; }
-        case OFPAT_SET_TP_SRC: {     fprintf(stream, "tp_src"); return; }
-        case OFPAT_SET_TP_DST: {     fprintf(stream, "tp_dst"); return; }
+        case OFPAT_SET_FIELD: {   fprintf(stream, "set_field"); return; }
         case OFPAT_COPY_TTL_OUT: {   fprintf(stream, "ttl_out"); return; }
         case OFPAT_COPY_TTL_IN: {    fprintf(stream, "ttl_in"); return; }
-        case OFPAT_SET_MPLS_LABEL: { fprintf(stream, "mpls_lbl"); return; }
-        case OFPAT_SET_MPLS_TC: {    fprintf(stream, "mpls_tc"); return; }
         case OFPAT_SET_MPLS_TTL: {   fprintf(stream, "mpls_ttl"); return; }
         case OFPAT_DEC_MPLS_TTL: {   fprintf(stream, "mpls_dec"); return; }
         case OFPAT_PUSH_VLAN: {      fprintf(stream, "vlan_psh"); return; }
@@ -239,7 +228,6 @@ void
 ofl_queue_prop_type_print(FILE *stream, uint16_t type) {
     switch (type) {
         case (OFPQT_MIN_RATE): { fprintf(stream, "minrate"); return; }
-        case (OFPQT_NONE): {     fprintf(stream, "none?"); return; }
         default: {               fprintf(stream, "?(%u)", type); return; }
     }
 }
@@ -304,7 +292,6 @@ ofl_error_code_print(FILE *stream, uint16_t type, uint16_t code) {
                 case (OFPBRC_BAD_TYPE) :         { fprintf(stream, "BAD_TYPE"); return; }
                 case (OFPBRC_BAD_STAT) :         { fprintf(stream, "BAD_STAT"); return; }
                 case (OFPBRC_BAD_EXPERIMENTER) : { fprintf(stream, "BAD_EXPERIMENTER"); return; }
-                case (OFPBRC_BAD_SUBTYPE) :      { fprintf(stream, "BAD_SUBTYPE"); return; }
                 case (OFPBRC_EPERM) :            { fprintf(stream, "EPERM"); return; }
                 case (OFPBRC_BAD_LEN) :          { fprintf(stream, "BAD_LEN"); return; }
                 case (OFPBRC_BUFFER_EMPTY) :     { fprintf(stream, "BUFFER_EMPTY"); return; }
@@ -318,7 +305,6 @@ ofl_error_code_print(FILE *stream, uint16_t type, uint16_t code) {
                 case (OFPBAC_BAD_TYPE) :              { fprintf(stream, "BAD_TYPE"); return; }
                 case (OFPBAC_BAD_LEN) :               { fprintf(stream, "BAD_LEN"); return; }
                 case (OFPBAC_BAD_EXPERIMENTER) :      { fprintf(stream, "BAD_EXPERIMENTER"); return; }
-                case (OFPBAC_BAD_EXPERIMENTER_TYPE) : { fprintf(stream, "BAD_EXPERIMENTER_TYPE"); return; }
                 case (OFPBAC_BAD_OUT_PORT) :          { fprintf(stream, "BAD_OUT_PORT"); return; }
                 case (OFPBAC_BAD_ARGUMENT) :          { fprintf(stream, "BAD_ARGUMENT"); return; }
                 case (OFPBAC_EPERM) :                 { fprintf(stream, "EPERM"); return; }
@@ -333,11 +319,9 @@ ofl_error_code_print(FILE *stream, uint16_t type, uint16_t code) {
         case (OFPET_BAD_INSTRUCTION): {
             switch (code) {
                 case (OFPBIC_UNKNOWN_INST) :        { fprintf(stream, "UNKNOWN_INST"); return; }
-                case (OFPBIC_UNSUP_INST) :          { fprintf(stream, "UNSUP_INST"); return; }
                 case (OFPBIC_BAD_TABLE_ID) :        { fprintf(stream, "BAD_TABLE_ID"); return; }
                 case (OFPBIC_UNSUP_METADATA) :      { fprintf(stream, "UNSUP_METADATA"); return; }
                 case (OFPBIC_UNSUP_METADATA_MASK) : { fprintf(stream, "UNSUP_METADATA_MASK"); return; }
-                case (OFPBIC_UNSUP_EXP_INST) :      { fprintf(stream, "UNSUP_EXP_INST"); return; }
             }
             break;
         }
@@ -370,8 +354,6 @@ ofl_error_code_print(FILE *stream, uint16_t type, uint16_t code) {
             switch (code) {
                 case (OFPGMFC_GROUP_EXISTS) :         { fprintf(stream, "GROUP_EXISTS"); return; }
                 case (OFPGMFC_INVALID_GROUP) :        { fprintf(stream, "INVALID_GROUP"); return; }
-                case (OFPGMFC_WEIGHT_UNSUPPORTED) :   { fprintf(stream, "WEIGHT_UNSUPPORTED"); return; }
-                case (OFPGMFC_OUT_OF_GROUPS) :        { fprintf(stream, "OUT_OF_GROUPS"); return; }
                 case (OFPGMFC_OUT_OF_BUCKETS) :       { fprintf(stream, "OUT_OF_BUCKETS"); return; }
                 case (OFPGMFC_CHAINING_UNSUPPORTED) : { fprintf(stream, "CHAINING_UNSUPPORTED"); return; }
                 case (OFPGMFC_WATCH_UNSUPPORTED) :    { fprintf(stream, "UNSUPPORTED"); return; }

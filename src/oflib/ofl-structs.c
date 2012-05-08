@@ -37,6 +37,7 @@
 #include "ofl-actions.h"
 #include "ofl-utils.h"
 #include "ofl-log.h"
+#include "../lib/hmap.h"
 #include "openflow/openflow.h"
 
 #define UNUSED __attribute__((__unused__))
@@ -53,18 +54,19 @@ ofl_utils_count_ofp_instructions(void *data, size_t data_len, size_t *count) {
 
     d = (uint8_t *)data;
     *count = 0;
-
+    
     /* this is needed so that buckets are handled correctly */
     while (data_len >= sizeof(struct ofp_instruction)) {
         inst = (struct ofp_instruction *)d;
-
         if (data_len < ntohs(inst->len) || ntohs(inst->len) < sizeof(struct ofp_instruction)) {
             OFL_LOG_WARN(LOG_MODULE, "Received instruction has invalid length.");
             return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
+                    
         }
         data_len -= ntohs(inst->len);
         d += ntohs(inst->len);
         (*count)++;
+
     }
 
     return 0;
@@ -133,10 +135,8 @@ ofl_utils_count_ofp_flow_stats(void *data, size_t data_len, size_t *count) {
 
     d = (uint8_t *)data;
     *count = 0;
-
     while (data_len >= sizeof(struct ofp_flow_stats)) {
         stat = (struct ofp_flow_stats *)d;
-
         if (data_len < ntohs(stat->length) || ntohs(stat->length) < sizeof(struct ofp_flow_stats)) {
             OFL_LOG_WARN(LOG_MODULE, "Received flow stat has invalid length.");
             return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
@@ -323,7 +323,8 @@ ofl_structs_free_group_desc_stats(struct ofl_group_desc_stats *stats, struct ofl
 void
 ofl_structs_free_match(struct ofl_match_header *match, struct ofl_exp *exp) {
     switch (match->type) {
-        case (OFPMT_STANDARD): {
+        case (OFPMT_OXM): {
+            
             free(match);
             break;
         }
@@ -337,3 +338,5 @@ ofl_structs_free_match(struct ofl_match_header *match, struct ofl_exp *exp) {
         }
     }
 }
+
+

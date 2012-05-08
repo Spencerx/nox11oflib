@@ -84,67 +84,13 @@ ofl_action_print(FILE *stream, struct ofl_action_header *act, struct ofl_exp *ex
             }
             break;
         }
-        case OFPAT_SET_VLAN_VID: {
-            struct ofl_action_vlan_vid *a = (struct ofl_action_vlan_vid *)act;
-
-            fprintf(stream, "{vid=\"");
-            ofl_vlan_vid_print(stream, a->vlan_vid);
-            fprintf(stream, "\"}");
-            break;
-        }
-        case OFPAT_SET_VLAN_PCP: {
-            struct ofl_action_vlan_pcp *a = (struct ofl_action_vlan_pcp *)act;
-
-            fprintf(stream, "{pcp=\"%u\"}", a->vlan_pcp);
-            break;
-        }
-        case OFPAT_SET_DL_SRC:
-        case OFPAT_SET_DL_DST: {
-            struct ofl_action_dl_addr *a = (struct ofl_action_dl_addr *)act;
-
-            fprintf(stream, "{addr=\""ETH_ADDR_FMT"\"}", ETH_ADDR_ARGS(a->dl_addr));
-            break;
-        }
-        case OFPAT_SET_NW_SRC:
-        case OFPAT_SET_NW_DST: {
-            struct ofl_action_nw_addr *a = (struct ofl_action_nw_addr *)act;
-
-            fprintf(stream, "{addr=\""IP_FMT"\"}", IP_ARGS(&a->nw_addr));
-            break;
-        }
-        case OFPAT_SET_NW_TOS: {
-            struct ofl_action_nw_tos *a = (struct ofl_action_nw_tos *)act;
-
-            fprintf(stream, "{tos=\"0x%02"PRIx8"\"}", a->nw_tos);
-            break;
-        }
-        case OFPAT_SET_NW_ECN: {
-            struct ofl_action_nw_ecn *a = (struct ofl_action_nw_ecn *)act;
-
-            fprintf(stream, "{ecn=\"%u\"}", a->nw_ecn);
-            break;
-        }
-        case OFPAT_SET_TP_SRC:
-        case OFPAT_SET_TP_DST: {
-            struct ofl_action_tp_port *a = (struct ofl_action_tp_port *)act;
-
-            fprintf(stream, "{port=\"%u\"}", a->tp_port);
+        case OFPAT_SET_FIELD:{
+            struct ofl_action_set_field *a = (struct ofl_action_set_field *)act;
+            fprintf(stream, "{field=%d", *a->value);
             break;
         }
         case OFPAT_COPY_TTL_OUT:
         case OFPAT_COPY_TTL_IN: {
-            break;
-        }
-        case OFPAT_SET_MPLS_LABEL: {
-            struct ofl_action_mpls_label *a = (struct ofl_action_mpls_label *)act;
-
-            fprintf(stream, "{label=\"%"PRIu32"\"}", a->mpls_label);
-            break;
-        }
-        case OFPAT_SET_MPLS_TC: {
-            struct ofl_action_mpls_tc *a = (struct ofl_action_mpls_tc *)act;
-
-            fprintf(stream, "{tc=\"%u\"}", a->mpls_tc);
             break;
         }
         case OFPAT_SET_MPLS_TTL: {

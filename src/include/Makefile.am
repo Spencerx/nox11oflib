@@ -47,9 +47,9 @@ ofp-msg-event.hh				\
 openflow-pack.hh				\
 openflow-streamops.hh				\
 openflow-default.hh				\
-openflow/openflow/nicira-ext.h			\
-openflow/openflow/openflow-netlink.h		\
-openflow/openflow/openflow.h			\
+openflow/nicira-ext.h			\
+openflow/openflow-netlink.h		\
+openflow/openflow.h			\
 openflow.hh					\
 packetgen.hh					\
 packets.h					\

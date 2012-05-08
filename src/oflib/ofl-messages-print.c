@@ -111,10 +111,6 @@ static void
 ofl_msg_print_packet_in(struct ofl_msg_packet_in *msg, FILE *stream) {
     fprintf(stream, "{buffer=\"");
     ofl_buffer_print(stream, msg->buffer_id);
-    fprintf(stream, "\", port=\"");
-    ofl_port_print(stream, msg->in_port);
-    fprintf(stream, "\", phy_port=\"");
-    ofl_port_print(stream, msg->in_phy_port);
     fprintf(stream, "\", tlen=\"%u\", reas=\"", msg->total_len);
     ofl_packet_in_reason_print(stream, msg->reason);
     fprintf(stream, "\", table=\"");
@@ -179,7 +175,6 @@ ofl_msg_print_flow_mod(struct ofl_msg_flow_mod *msg, FILE *stream, struct ofl_ex
     fprintf(stream, "\", flags=\"0x%"PRIx16"\", match=",msg->flags);
     ofl_structs_match_print(stream, msg->match, exp);
     fprintf(stream, ", insts=[");
-
     for(i=0; i<msg->instructions_num; i++) {
         ofl_structs_instruction_print(stream, msg->instructions[i], exp);
         if (i < msg->instructions_num - 1) { fprintf(stream, ", "); }

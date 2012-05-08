@@ -55,8 +55,6 @@ ofl_msg_free_error(struct ofl_msg_error *msg) {
     return 0;
 }
 
-
-
 static int
 ofl_msg_free_stats_request(struct ofl_msg_stats_request_header *msg, struct ofl_exp *exp) {
     switch (msg->type) {
@@ -162,8 +160,10 @@ ofl_msg_free_stats_reply(struct ofl_msg_stats_reply_header *msg, struct ofl_exp 
 
 int
 ofl_msg_free(struct ofl_msg_header *msg, struct ofl_exp *exp) {
+     
     switch (msg->type) {
         case OFPT_HELLO: {
+              
             break;
         }
         case OFPT_ERROR: {
@@ -183,9 +183,11 @@ ofl_msg_free(struct ofl_msg_header *msg, struct ofl_exp *exp) {
             return 0;
         }
         case OFPT_FEATURES_REQUEST: {
+            
             break;
         }
         case OFPT_FEATURES_REPLY: {
+            
             struct ofl_msg_features_reply *rep = (struct ofl_msg_features_reply *)msg;
             OFL_UTILS_FREE_ARR_FUN(rep->ports, rep->ports_num,
                                    ofl_structs_free_port);
@@ -246,6 +248,7 @@ ofl_msg_free(struct ofl_msg_header *msg, struct ofl_exp *exp) {
             break;
         }
     }
+    
     free(msg);
     return 0;
 }

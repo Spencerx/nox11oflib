@@ -36,7 +36,9 @@
 #include <stdio.h>
 
 #include "ofl.h"
-#include "openflow/openflow.h"
+#include "ofl-structs.h"
+#include "../include/openflow/openflow.h"
+//#include "nbee_link/nbee_link.h"
 
 struct ofl_exp;
 
@@ -48,6 +50,7 @@ struct ofl_exp;
  * ones - must start with this header. */
 struct ofl_action_header {
     enum ofp_action_type   type;   /* One of OFPAT_*. */
+    uint16_t len; /* Total length */
 };
 
 
@@ -58,72 +61,18 @@ struct ofl_action_output {
     uint16_t   max_len; /* Max length to send to controller. */
 };
 
-struct ofl_action_vlan_vid {
-    struct ofl_action_header   header; /* OFPAT_SET_VLAN_VID. */
-
-    uint16_t   vlan_vid; /* VLAN id. */
-};
-
-struct ofl_action_vlan_pcp {
-        struct ofl_action_header   header; /* OFPAT_SET_VLAN_PCP. */
-
-    uint8_t   vlan_pcp; /* VLAN priority. */
-};
-
-struct ofl_action_dl_addr {
-    struct ofl_action_header   header; /* OFPAT_SET_DL_SRC/DST. */
-
-    uint8_t   dl_addr[OFP_ETH_ALEN]; /* Ethernet address. */
-};
-
-struct ofl_action_nw_addr {
-    struct ofl_action_header   header; /* OFPAT_SET_NW_SRC/DST. */
-
-    uint32_t   nw_addr;
-};
-
-struct ofl_action_nw_tos {
-    struct ofl_action_header   header; /* OFPAT_SET_NW_TOS. */
-
-    uint8_t   nw_tos; /* TCP/UDP/SCTP port. */
-};
-
-struct ofl_action_nw_ecn {
-    struct ofl_action_header   header; /* OFPAT_SET_NW_ECN. */
-
-    uint8_t   nw_ecn;
-};
-
-struct ofl_action_tp_port {
-    struct ofl_action_header   header; /* OFPAT_SET_TP_SRC/DST. */
-
-    uint16_t   tp_port; /* TCP/UDP/SCTP port. */
-};
-
-struct ofl_action_mpls_label {
-    struct ofl_action_header   header; /* OFPAT_SET_MPLS_LABEL. */
-
-    uint32_t   mpls_label; /* MPLS label */
-};
-
-struct ofl_action_mpls_tc {
-    struct ofl_action_header   header; /* OFPAT_SET_MPLS_TC. */
-
-    uint8_t   mpls_tc; /* MPLS TC */
-};
-
 struct ofl_action_mpls_ttl {
     struct ofl_action_header   header; /* OFPAT_SET_MPLS_TTL. */
 
     uint8_t   mpls_ttl; /* MPLS TTL */
 };
-
+   
 struct ofl_action_push {
     struct ofl_action_header   header; /* OFPAT_PUSH_VLAN/MPLS. */
 
     uint16_t   ethertype; /* Ethertype */
 };
-
+   
 struct ofl_action_pop_mpls {
     struct ofl_action_header   header; /* OFPAT_POP_MPLS. */
 
@@ -135,6 +84,12 @@ struct ofl_action_set_queue {
 
     uint32_t   queue_id;
 };
+    
+struct ofl_action_group {
+    struct ofl_action_header   header; /* OFPAT_GROUP. */
+
+    uint32_t   group_id;  /* Group identifier. */
+};
 
 struct ofl_action_set_nw_ttl {
     struct ofl_action_header   header; /* OFPAT_SET_NW_TTL. */
@@ -142,10 +97,11 @@ struct ofl_action_set_nw_ttl {
     uint8_t   nw_ttl;
 };
 
-struct ofl_action_group {
-    struct ofl_action_header   header; /* OFPAT_GROUP. */
-
-    uint32_t   group_id;  /* Group identifier. */
+struct ofl_action_set_field {
+    struct ofl_action_header   header; /* OFPAT_SET_FIELD. */
+    uint16_t len;   /*Size of the OXM TLV */ 
+    uint32_t field; /* Field to be modified */
+    uint8_t *value;   /* New value */
 };
 
 struct ofl_action_experimenter {
@@ -164,7 +120,7 @@ struct ofl_action_experimenter {
  * In case of an experimenter action, it uses the passed in experimenter
  * callback. */
 size_t
-ofl_actions_pack(struct ofl_action_header *src, struct ofp_action_header *dst, struct ofl_exp *exp);
+ofl_actions_pack(struct ofl_action_header *src, struct ofp_action_header *dst, uint8_t* data, struct ofl_exp *exp);
 
 
 /* Given a list of action in OpenFlow wire format, these function returns

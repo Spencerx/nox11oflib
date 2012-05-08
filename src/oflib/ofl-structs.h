@@ -35,9 +35,13 @@
 #include <sys/types.h>
 #include <stdio.h>
 
-#include "openflow/openflow.h"
+#include <netinet/icmp6.h>
+#include "../include/openflow/openflow.h"
 #include "ofl.h"
 #include "ofl-actions.h"
+#include "ofl-packets.h"
+#include "../lib/hmap.h"
+
 
 struct ofl_exp;
 
@@ -52,7 +56,6 @@ struct ofl_packet_queue {
 };
 
 
-
 struct ofl_queue_prop_header {
     enum ofp_queue_properties   type; /* One of OFPQT_. */
 };
@@ -62,7 +65,6 @@ struct ofl_queue_prop_min_rate {
 
     uint16_t   rate; /* In 1/10 of a percent; >1000 -> disabled. */
 };
-
 
 
 struct ofl_instruction_header {
@@ -161,39 +163,20 @@ struct ofl_table_stats {
 
 struct ofl_match_header {
     uint16_t   type;             /* One of OFPMT_* */
+    uint16_t   length;           /* Match length */
 };
 
-struct ofl_match_standard {
-    struct ofl_match_header   header;
-
-    uint32_t   in_port;          /* Input switch port. */
-    uint32_t   wildcards;        /* Wildcard fields. */
-
-    uint8_t    dl_src[OFP_ETH_ALEN]; /* Ethernet source address. */
-    uint8_t    dl_src_mask[OFP_ETH_ALEN]; /* Ethernet source address mask. */
-    uint8_t    dl_dst[OFP_ETH_ALEN]; /* Ethernet destination address. */
-    uint8_t    dl_dst_mask[OFP_ETH_ALEN]; /* Ethernet dest. address mask. */
-    uint16_t   dl_vlan;          /* Input VLAN id. */
-    uint8_t    dl_vlan_pcp;       /* Input VLAN priority. */
-    uint16_t   dl_type;          /* Ethernet frame type. */
-    uint8_t    nw_tos;            /* IP ToS (actually DSCP field, 6 bits). */
-    uint8_t    nw_proto;          /* IP protocol or lower 8 bits of
-                                * ARP opcode. */
-    uint32_t   nw_src;           /* IP source address. */
-    uint32_t   nw_src_mask;      /* IP source address mask. */
-    uint32_t   nw_dst;           /* IP destination address. */
-    uint32_t   nw_dst_mask;      /* IP destination address mask. */
-    uint16_t   tp_src;           /* TCP/UDP/SCTP source port, or ICMP type. */
-    uint16_t   tp_dst;           /* TCP/UDP/SCTP destination port, or ICMP code. */
-    uint32_t   mpls_label;       /* MPLS label. */
-    uint8_t    mpls_tc;           /* MPLS TC. */
-
-    uint64_t   metadata;         /* Metadata passed between tables. */
-    uint64_t   metadata_mask;    /* Mask for metadata. */
+struct ofl_match {
+    struct ofl_match_header   header; /* Match header */
+    struct hmap match_fields;         /* Match fields. Contain OXM TLV's  */
 };
 
-
-
+struct ofl_match_tlv{
+    
+    struct hmap_node hmap_node;
+    uint32_t header;    /* TLV header */
+    uint8_t *value;     /* TLV value */
+};
 
 struct ofl_port_stats {
     uint32_t   port_no;
@@ -271,6 +254,55 @@ struct ofl_group_desc_stats {
 
 
 /****************************************************************************
+ * Utility functions to match structure
+ ****************************************************************************/
+void
+ofl_structs_match_init(struct ofl_match *match);
+
+void
+ofl_structs_match_put8(struct ofl_match *match, uint32_t header, uint8_t value);
+
+void
+ofl_structs_match_put8m(struct ofl_match *match, uint32_t header, uint8_t value, uint8_t mask);
+
+void
+ofl_structs_match_put16(struct ofl_match *match, uint32_t header, uint16_t value);
+
+void
+ofl_structs_match_put16m(struct ofl_match *match, uint32_t header, uint16_t value, uint16_t mask);
+
+void
+ofl_structs_match_put32(struct ofl_match *match, uint32_t header, uint32_t value);
+
+void
+ofl_structs_match_put32m(struct ofl_match *match, uint32_t header, uint32_t value, uint32_t mask);
+
+void
+ofl_structs_match_put64(struct ofl_match *match, uint32_t header, uint64_t value);
+
+void
+ofl_structs_match_put64m(struct ofl_match *match, uint32_t header, uint64_t value, uint64_t mask);
+
+void
+ofl_structs_match_put_eth(struct ofl_match *match, uint32_t header, uint8_t value[ETH_ADDR_LEN]);
+
+void
+ofl_structs_match_put_eth_m(struct ofl_match *match, uint32_t header, uint8_t value[ETH_ADDR_LEN], uint8_t mask[ETH_ADDR_LEN]);
+
+void 
+ofl_structs_match_put_ipv6(struct ofl_match *match, uint32_t header, const struct in6_addr *value);
+
+void 
+ofl_structs_match_put_ipv6(struct ofl_match *match, uint32_t header, const struct in6_addr *value);
+
+void 
+ofl_structs_match_put_ipv6m(struct ofl_match *match, uint32_t header, const struct in6_addr *value, const struct in6_addr *mask);
+
+int 
+ofl_structs_match_ofp_total_len(struct ofl_match *match);
+
+//void ofl_structs_match_put_ipv6(struct ofl_match *match, uint32_t header, const struct in6_addr *value);
+/****************************************************************************
  * Functions for (un)packing structures
  ****************************************************************************/
 
@@ -281,7 +313,7 @@ size_t
 ofl_structs_bucket_pack(struct ofl_bucket *src, struct ofp_bucket *dst, struct ofl_exp *exp);
 
 size_t
-ofl_structs_flow_stats_pack(struct ofl_flow_stats *src, struct ofp_flow_stats *dst, struct ofl_exp *exp);
+ofl_structs_flow_stats_pack(struct ofl_flow_stats *src, uint8_t *dst, struct ofl_exp *exp);
 
 size_t
 ofl_structs_group_stats_pack(struct ofl_group_stats *src, struct ofp_group_stats *dst);
@@ -313,8 +345,7 @@ size_t
 ofl_structs_bucket_counter_pack(struct ofl_bucket_counter *src, struct ofp_bucket_counter *dst);
 
 size_t
-ofl_structs_match_pack(struct ofl_match_header *src, struct ofp_match *dst, struct ofl_exp *exp);
-
+ofl_structs_match_pack(struct ofl_match_header *src, struct ofp_match *dst, uint8_t* oxm_fields, struct ofl_exp *exp);
 
 
 ofl_err
@@ -324,7 +355,7 @@ ofl_err
 ofl_structs_bucket_unpack(struct ofp_bucket *src, size_t *len, uint8_t gtype, struct ofl_bucket **dst, struct ofl_exp *exp);
 
 ofl_err
-ofl_structs_flow_stats_unpack(struct ofp_flow_stats *src, size_t *len, struct ofl_flow_stats **dst, struct ofl_exp *exp);
+ofl_structs_flow_stats_unpack(struct ofp_flow_stats *src,uint8_t *buf, size_t *len, struct ofl_flow_stats **dst, struct ofl_exp *exp);
 
 ofl_err
 ofl_structs_queue_prop_unpack(struct ofp_queue_prop_header *src, size_t *len, struct ofl_queue_prop_header **dst);
@@ -354,7 +385,7 @@ ofl_err
 ofl_structs_bucket_counter_unpack(struct ofp_bucket_counter *src, size_t *len, struct ofl_bucket_counter **dst);
 
 ofl_err
-ofl_structs_match_unpack(struct ofp_match *src, size_t *len, struct ofl_match_header **dst, struct ofl_exp *exp);
+ofl_structs_match_unpack(struct ofp_match *src,uint8_t *buf, size_t *len, struct ofl_match_header **dst, struct ofl_exp *exp);
 
 
 

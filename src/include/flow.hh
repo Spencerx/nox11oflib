@@ -32,7 +32,7 @@ class Buffer;
 
 class Flow {
 public:
-	struct ofl_match_standard match;
+	struct ofl_match match;
 
   /** Empty constructor
    */
@@ -40,16 +40,10 @@ public:
   /** Copy constructor
    */
   Flow(const Flow& flow_);
-  /** Constructor from packet
-   */
-  Flow(uint32_t in_port_, const Buffer&);
   /** Constructor from ofp_match
    */
-  Flow(const struct ofl_match_standard *match_);
+  Flow(const struct ofl_match *match);
 
-  /** Compare function
-   */
-  static bool matches(const Flow&, const Flow&);
   /** \brief String representation
    */
   const std::string to_string() const;

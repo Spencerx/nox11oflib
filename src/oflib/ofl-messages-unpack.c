@@ -94,6 +94,26 @@ ofl_msg_unpack_echo(struct ofp_header *src, size_t *len, struct ofl_msg_header *
     return 0;
 }
 
+static ofl_err
+ofl_msg_unpack_role_request(struct ofp_header *src, size_t *len, struct ofl_msg_header **msg) {
+    struct ofp_role_request *srl;
+    struct ofl_msg_role_request *drl;
+    
+    if (*len < sizeof(struct ofp_role_request)){
+        OFL_LOG_WARN(LOG_MODULE, "Received ROLE message has invalid length (%zu).", *len);
+        return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
+    }
+    *len -= sizeof(struct ofp_role_request);    
+    
+    srl = (struct ofp_role_request *) src;
+    drl = (struct ofl_msg_role_request *) malloc(sizeof(struct ofl_msg_role_request));
+    
+    drl->role = ntohl(srl->role);
+    drl->generation_id = ntoh64(srl->generation_id);
+
+    *msg = (struct ofl_msg_header *)drl;
+    return 0;
+}
 
 static ofl_err
 ofl_msg_unpack_features_reply(struct ofp_header *src, size_t *len, struct ofl_msg_header **msg) {
@@ -105,7 +125,7 @@ ofl_msg_unpack_features_reply(struct ofp_header *src, size_t *len, struct ofl_ms
 
     if (*len < sizeof(struct ofp_switch_features)) {
         OFL_LOG_WARN(LOG_MODULE, "Received FEATURES_REPLY message has invalid length (%zu).", *len);
-        return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
+
     }
     *len -= sizeof(struct ofp_switch_features);
 
@@ -187,9 +207,10 @@ ofl_msg_unpack_set_config(struct ofp_header *src, size_t *len, struct ofl_msg_he
 }
 
 static ofl_err
-ofl_msg_unpack_packet_in(struct ofp_header *src, size_t *len, struct ofl_msg_header **msg) {
+ofl_msg_unpack_packet_in(struct ofp_header *src, uint8_t* buf, size_t *len, struct ofl_msg_header **msg) {
     struct ofp_packet_in *sp;
     struct ofl_msg_packet_in *dp;
+    uint8_t *ptr;
 
     if (*len < sizeof(struct ofp_packet_in)) {
         OFL_LOG_WARN(LOG_MODULE, "Received PACKET_IN message has invalid length (%zu).", *len);
@@ -198,7 +219,7 @@ ofl_msg_unpack_packet_in(struct ofp_header *src, size_t *len, struct ofl_msg_hea
 
     sp = (struct ofp_packet_in *)src;
 
-    if (ntohl(sp->in_port) == 0 ||
+    /*if (ntohl(sp->in_port) == 0 ||
         (ntohl(sp->in_port) > OFPP_MAX &&
          ntohl(sp->in_port) != OFPP_LOCAL)) {
         if (OFL_LOG_IS_WARN_ENABLED(LOG_MODULE)) {
@@ -207,7 +228,7 @@ ofl_msg_unpack_packet_in(struct ofp_header *src, size_t *len, struct ofl_msg_hea
             free(ps);
         }
         return ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_ARGUMENT);
-    }
+    }*/
 
     if (sp->table_id == 0xff) {
         if (OFL_LOG_IS_WARN_ENABLED(LOG_MODULE)) {
@@ -217,19 +238,20 @@ ofl_msg_unpack_packet_in(struct ofp_header *src, size_t *len, struct ofl_msg_hea
         }
         return ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_ARGUMENT);
     }
-    *len -= sizeof(struct ofp_packet_in);
-
+    *len -= sizeof(struct ofp_packet_in)-4;
     dp = (struct ofl_msg_packet_in *)malloc(sizeof(struct ofl_msg_packet_in));
 
     dp->buffer_id = ntohl(sp->buffer_id);
-    dp->in_port = ntohl(sp->in_port);
-    dp->in_phy_port = ntohl(sp->in_phy_port);
     dp->total_len = ntohs(sp->total_len);
     dp->reason = (enum ofp_packet_in_reason)sp->reason;
     dp->table_id = sp->table_id;
-
     dp->data_length = *len;
-    dp->data = *len > 0 ? (uint8_t *)memcpy(malloc(*len), sp->data, *len) : NULL;
+    
+    ptr = buf + (sizeof(struct ofp_packet_in)-4);
+    ofl_structs_match_unpack(&(sp->match),ptr,len,&(dp->match),NULL);
+    
+    ptr = buf + ROUND_UP(sizeof(struct ofp_packet_in)-4 + sp->match.length,8);
+    dp->data = *len > 0 ? (uint8_t *)memcpy(malloc(*len), ptr, *len) : NULL;
     *len = 0;
 
     *msg = (struct ofl_msg_header *)dp;
@@ -238,17 +260,18 @@ ofl_msg_unpack_packet_in(struct ofp_header *src, size_t *len, struct ofl_msg_hea
 
 
 static ofl_err
-ofl_msg_unpack_flow_removed(struct ofp_header *src, size_t *len, struct ofl_msg_header **msg, struct ofl_exp *exp) {
+ofl_msg_unpack_flow_removed(struct ofp_header *src,uint8_t *buf, size_t *len, struct ofl_msg_header **msg, struct ofl_exp *exp) {
     struct ofp_flow_removed *sr;
     struct ofl_msg_flow_removed *dr;
     ofl_err error;
+    int match_pos;
 
     if (*len < (sizeof(struct ofp_flow_removed) - sizeof(struct ofp_match))) {
         OFL_LOG_WARN(LOG_MODULE, "Received FLOW_REMOVED message has invalid length (%zu).", *len);
         return OFL_ERROR;
     }
 
-    sr = (struct ofp_flow_removed *)src;
+    sr = (struct ofp_flow_removed *)src ;
 
     if (sr->table_id == 0xff) {
         if (OFL_LOG_IS_WARN_ENABLED(LOG_MODULE)) {
@@ -258,7 +281,8 @@ ofl_msg_unpack_flow_removed(struct ofp_header *src, size_t *len, struct ofl_msg_
         }
         return ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_ARGUMENT);
     }
-    *len -= (sizeof(struct ofp_flow_removed) - sizeof(struct ofp_match));
+    printf("LEN %d\n", *len);
+    *len -=  sizeof(struct ofp_flow_removed) - sizeof(struct ofp_match) ;
 
     dr = (struct ofl_msg_flow_removed *)malloc(sizeof(struct ofl_msg_flow_removed));
     dr->reason = (enum ofp_flow_removed_reason)sr->reason;
@@ -276,13 +300,15 @@ ofl_msg_unpack_flow_removed(struct ofp_header *src, size_t *len, struct ofl_msg_
     dr->stats->instructions_num = 0;
     dr->stats->instructions     = NULL;
 
-    error = ofl_structs_match_unpack(&(sr->match), len, &(dr->stats->match), exp);
+    match_pos = sizeof(struct ofp_flow_removed) - 4;
+
+    error = ofl_structs_match_unpack(&(sr->match),buf + match_pos, len, &(dr->stats->match), exp);
     if (error) {
         free(dr->stats);
         free(dr);
         return error;
     }
-
+    printf(" LEN %d\n", *len );
     *msg = (struct ofl_msg_header *)dr;
     return 0;
 }
@@ -302,7 +328,7 @@ ofl_msg_unpack_port_status(struct ofp_header *src, size_t *len, struct ofl_msg_h
     ss = (struct ofp_port_status *)src;
     ds = (struct ofl_msg_port_status *)malloc(sizeof(struct ofl_msg_port_status));
 
-    ds->reason = (enum ofp_port_reason)(ss->reason);
+    ds->reason = (enum ofp_port_reason) ss->reason;
 
     error = ofl_structs_port_unpack(&(ss->desc), len, &(ds->desc));
     if (error) {
@@ -330,7 +356,7 @@ ofl_msg_unpack_packet_out(struct ofp_header *src, size_t *len, struct ofl_msg_he
 
     sp = (struct ofp_packet_out *)src;
 
-    if (ntohl(sp->in_port) == 0 ||
+    /*if (ntohl(sp->in_port) == 0 ||
         (ntohl(sp->in_port) > OFPP_MAX && ntohl(sp->in_port) != OFPP_CONTROLLER)) {
         if (OFL_LOG_IS_WARN_ENABLED(LOG_MODULE)) {
             char *ps = ofl_port_to_string(ntohl(sp->in_port));
@@ -338,7 +364,7 @@ ofl_msg_unpack_packet_out(struct ofp_header *src, size_t *len, struct ofl_msg_he
             free(ps);
         }
         return ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_ARGUMENT);
-    }
+    }*/
 
     if (ntohl(sp->buffer_id) != 0xffffffff &&
         *len != sizeof(struct ofp_packet_out) + ntohs(sp->actions_len)) {
@@ -354,7 +380,6 @@ ofl_msg_unpack_packet_out(struct ofp_header *src, size_t *len, struct ofl_msg_he
     dp = (struct ofl_msg_packet_out *)malloc(sizeof(struct ofl_msg_packet_out));
 
     dp->buffer_id = ntohl(sp->buffer_id);
-    dp->in_port = ntohl(sp->in_port);
 
     if (*len < ntohs(sp->actions_len)) {
         OFL_LOG_WARN(LOG_MODULE, "Received PACKET_OUT message has invalid action length (%zu).", *len);
@@ -388,18 +413,20 @@ ofl_msg_unpack_packet_out(struct ofp_header *src, size_t *len, struct ofl_msg_he
     *len = 0;
 
     *msg = (struct ofl_msg_header *)dp;
+
     return 0;
 }
 
 
 static ofl_err
-ofl_msg_unpack_flow_mod(struct ofp_header *src, size_t *len, struct ofl_msg_header **msg, struct ofl_exp *exp) {
+ofl_msg_unpack_flow_mod(struct ofp_header *src,uint8_t* buf, size_t *len, struct ofl_msg_header **msg, struct ofl_exp *exp) {
     struct ofp_flow_mod *sm;
     struct ofl_msg_flow_mod *dm;
     struct ofp_instruction *inst;
     ofl_err error;
     size_t i;
-
+    int match_pos;
+    
     if (*len < (sizeof(struct ofp_flow_mod) - sizeof(struct ofp_match))) {
         OFL_LOG_WARN(LOG_MODULE, "Received FLOW_MOD message has invalid length (%zu).", *len);
         return ofl_error(OFPET_BAD_ACTION, OFPBRC_BAD_LEN);
@@ -420,23 +447,22 @@ ofl_msg_unpack_flow_mod(struct ofp_header *src, size_t *len, struct ofl_msg_head
     dm->out_port =     ntohl( sm->out_port);
     dm->out_group =    ntohl( sm->out_group);
     dm->flags =        ntohs( sm->flags);
-
-    error = ofl_structs_match_unpack(&(sm->match), len, &(dm->match), exp);
-
+    
+    match_pos = sizeof(struct ofp_flow_mod) - 4;
+    error = ofl_structs_match_unpack(&(sm->match),buf + match_pos, len, &(dm->match), exp);
     if (error) {
         free(dm);
         return error;
     }
-
-    error = ofl_utils_count_ofp_instructions(&(sm->instructions), *len, &dm->instructions_num);
+    error = ofl_utils_count_ofp_instructions((struct ofp_instruction *)(buf + ROUND_UP(match_pos + dm->match->length,8)), *len, &dm->instructions_num);
     if (error) {
         ofl_structs_free_match(dm->match, exp);
         free(dm);
         return error;
     }
-
+        
     dm->instructions = (struct ofl_instruction_header **)malloc(dm->instructions_num * sizeof(struct ofl_instruction_header *));
-    inst = sm->instructions;
+    inst = (struct ofp_instruction *) (buf + ROUND_UP(match_pos + dm->match->length,8));
     for (i = 0; i < dm->instructions_num; i++) {
         error = ofl_structs_instructions_unpack(inst, len, &(dm->instructions[i]), exp);
         if (error) {
@@ -448,7 +474,6 @@ ofl_msg_unpack_flow_mod(struct ofp_header *src, size_t *len, struct ofl_msg_head
         }
         inst = (struct ofp_instruction *)((uint8_t *)inst + ntohs(inst->len));
     }
-
     *msg = (struct ofl_msg_header *)dm;
     return 0;
 }
@@ -471,12 +496,12 @@ ofl_msg_unpack_group_mod(struct ofp_header *src, size_t *len, struct ofl_msg_hea
 
     if (ntohs(sm->command) > OFPGC_DELETE) {
         OFL_LOG_WARN(LOG_MODULE, "Received GROUP_MOD message with invalid command (%u).", ntohs(sm->command));
-        return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_SUBTYPE);
+        return ofl_error(OFPET_BAD_REQUEST, OFPGMFC_BAD_COMMAND);
     }
 
     if (ntohs(sm->type) > OFPGT_FF && ntohs(sm->type) < 128 /* experimenter */) {
         OFL_LOG_WARN(LOG_MODULE, "Received GROUP_MOD message with invalid type (%u).", ntohs(sm->type));
-        return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_SUBTYPE);
+        return ofl_error(OFPET_BAD_REQUEST, OFPGMFC_BAD_TYPE);
     }
 
     if (ntohl(sm->group_id) > OFPG_MAX &&
@@ -543,14 +568,14 @@ ofl_msg_unpack_port_mod(struct ofp_header *src, size_t *len, struct ofl_msg_head
 
     sm = (struct ofp_port_mod *)src;
 
-    if (ntohl(sm->port_no) == 0 || ntohl(sm->port_no) > OFPP_MAX) {
+    /*if (ntohl(sm->port_no) == 0 || ntohl(sm->port_no) > OFPP_MAX) {
         if (OFL_LOG_IS_WARN_ENABLED(LOG_MODULE)) {
             char *ps = ofl_port_to_string(ntohl(sm->port_no));
             OFL_LOG_WARN(LOG_MODULE, "Received PORT_MOD message has invalid in_port (%s).", ps);
             free(ps);
         }
         return ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_ARGUMENT);
-    }
+    }*/
     *len -= sizeof(struct ofp_port_mod);
 
     dm = (struct ofl_msg_port_mod *)malloc(sizeof(struct ofl_msg_port_mod));
@@ -587,10 +612,11 @@ ofl_msg_unpack_table_mod(struct ofp_header *src, size_t *len, struct ofl_msg_hea
 }
 
 static ofl_err
-ofl_msg_unpack_stats_request_flow(struct ofp_stats_request *os, size_t *len, struct ofl_msg_header **msg, struct ofl_exp *exp) {
+ofl_msg_unpack_stats_request_flow(struct ofp_stats_request *os,uint8_t* buf, size_t *len, struct ofl_msg_header **msg, struct ofl_exp *exp) {
     struct ofp_flow_stats_request *sm;
     struct ofl_msg_stats_request_flow *dm;
     ofl_err error = 0;
+    int match_pos;
 
     // ofp_stats_request length was checked at ofl_msg_unpack_stats_request
 
@@ -609,7 +635,9 @@ ofl_msg_unpack_stats_request_flow(struct ofp_stats_request *os, size_t *len, str
     dm->cookie = ntoh64(sm->cookie);
     dm->cookie_mask = ntoh64(sm->cookie_mask);
 
-    error = ofl_structs_match_unpack(&(sm->match), len, &(dm->match), exp);
+    match_pos = sizeof(struct ofp_flow_stats_request) - 4;
+
+    error = ofl_structs_match_unpack(&(sm->match),buf + match_pos, len, &(dm->match), exp);
     if (error) {
         free(dm);
         return error;
@@ -712,7 +740,7 @@ ofl_msg_unpack_stats_request_empty(struct ofp_stats_request *os UNUSED, size_t *
 }
 
 static ofl_err
-ofl_msg_unpack_stats_request(struct ofp_header *src, size_t *len, struct ofl_msg_header **msg, struct ofl_exp *exp) {
+ofl_msg_unpack_stats_request(struct ofp_header *src,uint8_t *buf, size_t *len, struct ofl_msg_header **msg, struct ofl_exp *exp) {
     struct ofl_msg_stats_request_header *ofls;
     struct ofp_stats_request *os;
     int error;
@@ -732,7 +760,7 @@ ofl_msg_unpack_stats_request(struct ofp_header *src, size_t *len, struct ofl_msg
     }
     case OFPST_FLOW:
     case OFPST_AGGREGATE: {
-        error = ofl_msg_unpack_stats_request_flow(os, len, msg, exp);
+        error = ofl_msg_unpack_stats_request_flow(os,buf, len, msg, exp);
         break;
     }
     case OFPST_TABLE: {
@@ -806,14 +834,14 @@ ofl_msg_unpack_stats_reply_desc(struct ofp_stats_reply *os, size_t *len, struct 
 
 
 static ofl_err
-ofl_msg_unpack_stats_reply_flow(struct ofp_stats_reply *os, size_t *len, struct ofl_msg_header **msg, struct ofl_exp *exp) {
+ofl_msg_unpack_stats_reply_flow(struct ofp_stats_reply *os, uint8_t *buf, size_t *len, struct ofl_msg_header **msg, struct ofl_exp *exp) {
     struct ofp_flow_stats *stat;
     struct ofl_msg_stats_reply_flow *dm;
     ofl_err error;
-    size_t i;
+    size_t i, ini_len;
+    uint8_t *ptr;
 
     // ofp_stats_reply was already checked and subtracted in unpack_stats_reply
-
     stat = (struct ofp_flow_stats *)os->body;
     dm = (struct ofl_msg_stats_reply_flow *)malloc(sizeof(struct ofl_msg_stats_reply_flow));
 
@@ -824,8 +852,12 @@ ofl_msg_unpack_stats_reply_flow(struct ofp_stats_reply *os, size_t *len, struct 
     }
     dm->stats = (struct ofl_flow_stats **)malloc(dm->stats_num * sizeof(struct ofl_flow_stats *));
 
+    ini_len = *len;
+    ptr = buf + sizeof(struct ofp_stats_reply);
     for (i = 0; i < dm->stats_num; i++) {
-        error = ofl_structs_flow_stats_unpack(stat, len, &(dm->stats[i]), exp);
+        error = ofl_structs_flow_stats_unpack(stat, ptr, len, &(dm->stats[i]), exp);
+        ptr += ini_len - *len;
+        ini_len = *len;
         if (error) {
             OFL_UTILS_FREE_ARR_FUN2(dm->stats, i,
                                     ofl_structs_free_flow_stats, exp);
@@ -1032,7 +1064,7 @@ ofl_msg_unpack_stats_reply_group_desc(struct ofp_stats_reply *os, size_t *len, s
 }
 
 static ofl_err
-ofl_msg_unpack_stats_reply(struct ofp_header *src, size_t *len, struct ofl_msg_header **msg, struct ofl_exp *exp) {
+ofl_msg_unpack_stats_reply(struct ofp_header *src, uint8_t *buf, size_t *len, struct ofl_msg_header **msg, struct ofl_exp *exp) {
     struct ofl_msg_stats_reply_header *ofls;
     struct ofp_stats_reply *os;
     int error;
@@ -1051,7 +1083,7 @@ ofl_msg_unpack_stats_reply(struct ofp_header *src, size_t *len, struct ofl_msg_h
         break;
     }
     case OFPST_FLOW: {
-        error = ofl_msg_unpack_stats_reply_flow(os, len, msg, exp);
+        error = ofl_msg_unpack_stats_reply_flow(os,buf, len, msg, exp);
         break;
     }
     case OFPST_AGGREGATE: {
@@ -1187,7 +1219,6 @@ ofl_msg_unpack(uint8_t *buf, size_t buf_len, struct ofl_msg_header **msg, uint32
     struct ofp_header *oh;
     size_t len = buf_len;
     ofl_err error = 0;
-
     if (len < sizeof(struct ofp_header)) {
         OFL_LOG_WARN(LOG_MODULE, "Received message is shorter than ofp_header.");
         if (xid != NULL) {
@@ -1251,10 +1282,10 @@ ofl_msg_unpack(uint8_t *buf, size_t buf_len, struct ofl_msg_header **msg, uint32
 
         /* Asynchronous messages. */
         case OFPT_PACKET_IN:
-            error = ofl_msg_unpack_packet_in(oh, &len, msg);
+            error = ofl_msg_unpack_packet_in(oh,buf, &len, msg);
             break;
         case OFPT_FLOW_REMOVED:
-            error = ofl_msg_unpack_flow_removed(oh, &len, msg, exp);
+            error = ofl_msg_unpack_flow_removed(oh,buf, &len, msg, exp);
             break;
         case OFPT_PORT_STATUS:
             error = ofl_msg_unpack_port_status(oh, &len, msg);
@@ -1265,7 +1296,7 @@ ofl_msg_unpack(uint8_t *buf, size_t buf_len, struct ofl_msg_header **msg, uint32
             error = ofl_msg_unpack_packet_out(oh, &len, msg, exp);
             break;
         case OFPT_FLOW_MOD:
-            error = ofl_msg_unpack_flow_mod(oh, &len, msg, exp);
+            error = ofl_msg_unpack_flow_mod(oh,buf, &len, msg, exp);
             break;
         case OFPT_GROUP_MOD:
             error = ofl_msg_unpack_group_mod(oh, &len, msg, exp);
@@ -1279,16 +1310,22 @@ ofl_msg_unpack(uint8_t *buf, size_t buf_len, struct ofl_msg_header **msg, uint32
 
         /* Statistics messages. */
         case OFPT_STATS_REQUEST:
-            error = ofl_msg_unpack_stats_request(oh, &len, msg, exp);
+            error = ofl_msg_unpack_stats_request(oh,buf, &len, msg, exp);
             break;
         case OFPT_STATS_REPLY:
-            error = ofl_msg_unpack_stats_reply(oh, &len, msg, exp);
+            error = ofl_msg_unpack_stats_reply(oh,buf, &len, msg, exp);
             break;
 
         /* Barrier messages. */
         case OFPT_BARRIER_REQUEST:
         case OFPT_BARRIER_REPLY:
             error = ofl_msg_unpack_empty(oh, &len, msg);
+            break;
+        
+        /* Role messages. */
+        case OFPT_ROLE_REQUEST:
+        case OFPT_ROLE_REPLY:
+            error = ofl_msg_unpack_role_request(oh, &len, msg);
             break;
 
         /* Queue Configuration messages. */
@@ -1299,7 +1336,7 @@ ofl_msg_unpack(uint8_t *buf, size_t buf_len, struct ofl_msg_header **msg, uint32
             error = ofl_msg_unpack_queue_get_config_reply(oh, &len, msg);
             break;
         default: {
-            error = ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_SUBTYPE);
+            error = ofl_error(OFPET_BAD_REQUEST, OFPGMFC_BAD_TYPE);
         }
     }
 

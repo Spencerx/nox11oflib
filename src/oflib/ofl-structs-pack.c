@@ -33,13 +33,15 @@
 #include <string.h>
 #include <netinet/in.h>
 
+#include "../include/openflow/openflow.h"
+#include "../lib/oxm-match.h"
 #include "ofl.h"
 #include "ofl-actions.h"
 #include "ofl-structs.h"
 #include "ofl-utils.h"
 #include "ofl-log.h"
 #include "ofl-packets.h"
-#include "openflow/openflow.h"
+
 
 #define LOG_MODULE ofl_str_p
 OFL_LOG_INIT(LOG_MODULE)
@@ -87,10 +89,10 @@ ofl_structs_instructions_ofp_total_len(struct ofl_instruction_header **instructi
 
 size_t
 ofl_structs_instructions_pack(struct ofl_instruction_header *src, struct ofp_instruction *dst, struct ofl_exp *exp) {
-
+    
     dst->type = htons(src->type);
     memset(dst->pad, 0x00, 4);
-
+    
     switch (src->type) {
         case OFPIT_GOTO_TABLE: {
             struct ofl_instruction_goto_table *si = (struct ofl_instruction_goto_table *)src;
@@ -118,7 +120,7 @@ ofl_structs_instructions_pack(struct ofl_instruction_header *src, struct ofp_ins
             size_t total_len, len;
             uint8_t *data;
             size_t i;
-
+            
             struct ofl_instruction_actions *si = (struct ofl_instruction_actions *)src;
             struct ofp_instruction_actions *di = (struct ofp_instruction_actions *)dst;
 
@@ -126,14 +128,12 @@ ofl_structs_instructions_pack(struct ofl_instruction_header *src, struct ofp_ins
 
             di->len = htons(total_len);
             memset(di->pad, 0x00, 4);
-
             data = (uint8_t *)dst + sizeof(struct ofp_instruction_actions);
-
+            
             for (i=0; i<si->actions_num; i++) {
-                len = ofl_actions_pack(si->actions[i], (struct ofp_action_header *)data, exp);
+                len = ofl_actions_pack(si->actions[i], (struct ofp_action_header *)data, data, exp);
                 data += len;
             }
-
             return total_len;
         }
         case OFPIT_CLEAR_ACTIONS: {
@@ -205,7 +205,7 @@ ofl_structs_bucket_pack(struct ofl_bucket *src, struct ofp_bucket *dst, struct o
     data = (uint8_t *)dst + sizeof(struct ofp_bucket);
 
     for (i=0; i<src->actions_num; i++) {
-        len = ofl_actions_pack(src->actions[i], (struct ofp_action_header *)data, exp);
+        len = ofl_actions_pack(src->actions[i], (struct ofp_action_header *)data, data, exp);
         data += len;
     }
 
@@ -217,7 +217,8 @@ ofl_structs_bucket_pack(struct ofl_bucket *src, struct ofp_bucket *dst, struct o
 
 size_t
 ofl_structs_flow_stats_ofp_len(struct ofl_flow_stats *stats, struct ofl_exp *exp) {
-    return sizeof(struct ofp_flow_stats) +
+    
+    return ROUND_UP((sizeof(struct ofp_flow_stats) - 4) + stats->match->length,8) +
            ofl_structs_instructions_ofp_total_len(stats->instructions, stats->instructions_num, exp);
 }
 
@@ -230,37 +231,40 @@ ofl_structs_flow_stats_ofp_total_len(struct ofl_flow_stats ** stats, size_t stat
 }
 
 size_t
-ofl_structs_flow_stats_pack(struct ofl_flow_stats *src, struct ofp_flow_stats *dst, struct ofl_exp *exp) {
-    size_t total_len, len;
+ofl_structs_flow_stats_pack(struct ofl_flow_stats *src, uint8_t *dst, struct ofl_exp *exp) {
+    
+    struct ofp_flow_stats *flow_stats;
+    size_t total_len;
     uint8_t *data;
-    size_t i;
-
-    total_len = sizeof(struct ofp_flow_stats) +
+    size_t  i;
+    
+    total_len = ROUND_UP(sizeof(struct ofp_flow_stats) -4 + src->match->length,8) +
                 ofl_structs_instructions_ofp_total_len(src->instructions, src->instructions_num, exp);
-
-    dst->length = htons(total_len);
-    dst->table_id = src->table_id;
-    dst->pad = 0x00;
-    dst->duration_sec = htonl(src->duration_sec);
-    dst->duration_nsec = htonl(src->duration_nsec);
-    dst->priority = htons(src->priority);
-    dst->idle_timeout = htons(src->idle_timeout);
-    dst->hard_timeout = htons(src->hard_timeout);
-    memset(dst->pad2, 0x00, 6);
-    dst->cookie = hton64(src->cookie);
-    dst->packet_count = hton64(src->packet_count);
-    dst->byte_count = hton64(src->byte_count);
-
-    ofl_structs_match_pack(src->match, &(dst->match), exp);
-
-
-    data = (uint8_t *)dst->instructions;
-
-    for (i=0; i<src->instructions_num; i++) {
-        len = ofl_structs_instructions_pack(src->instructions[i], (struct ofp_instruction *)data, exp);
-        data += len;
+    
+    dst = (uint8_t *) malloc(total_len);
+    flow_stats = (struct ofp_flow_stats*) dst;
+    flow_stats->length = htons(total_len);
+    
+    flow_stats->table_id = src->table_id;
+    flow_stats->pad = 0x00;
+    flow_stats->duration_sec = htonl(src->duration_sec);
+    flow_stats->duration_nsec = htonl(src->duration_nsec);
+    flow_stats->priority = htons(src->priority);
+    flow_stats->idle_timeout = htons(src->idle_timeout);
+    flow_stats->hard_timeout = htons(src->hard_timeout);
+    memset(flow_stats->pad2, 0x00, 6);
+    flow_stats->cookie = hton64(src->cookie);
+    flow_stats->packet_count = hton64(src->packet_count);
+    flow_stats->byte_count = hton64(src->byte_count);
+    
+    data = (dst) + sizeof(struct ofp_flow_stats) - 4;
+    ofl_structs_match_pack(src->match, &(flow_stats->match), data, exp);
+    data = (dst) + ROUND_UP(sizeof(struct ofp_flow_stats) -4 + src->match->length, 8);  
+    
+    for (i=0; i < src->instructions_num; i++) {
+        data += ofl_structs_instructions_pack(src->instructions[i], (struct ofp_instruction *) data, exp);
     }
-
+   
     return total_len;
 }
 
@@ -356,11 +360,15 @@ ofl_structs_queue_prop_ofp_total_len(struct ofl_queue_prop_header ** props,
 size_t
 ofl_structs_queue_prop_ofp_len(struct ofl_queue_prop_header *prop) {
     switch (prop->type) {
-        case OFPQT_NONE: {
-            return 0;
-        }
+       
         case OFPQT_MIN_RATE: {
             return sizeof(struct ofp_queue_prop_min_rate);
+        }
+        case OFPQT_MAX_RATE:{
+            return 0;
+        }
+        case OFPQT_EXPERIMENTER:{
+            return 0;
         }
     }
     return 0;
@@ -373,9 +381,7 @@ ofl_structs_queue_prop_pack(struct ofl_queue_prop_header *src,
     memset(dst->pad, 0x00, 4);
 
     switch (src->type) {
-        case OFPQT_NONE: {
-            return 0;
-        }
+       
         case OFPQT_MIN_RATE: {
             struct ofl_queue_prop_min_rate *sp = (struct ofl_queue_prop_min_rate *)src;
             struct ofp_queue_prop_min_rate *dp = (struct ofp_queue_prop_min_rate *)dst;
@@ -385,6 +391,12 @@ ofl_structs_queue_prop_pack(struct ofl_queue_prop_header *src,
             memset(dp->pad, 0x00, 6);
 
             return sizeof(struct ofp_queue_prop_min_rate);
+        }
+        case OFPQT_MAX_RATE:{
+            return 1;
+        }
+        case OFPQT_EXPERIMENTER:{
+            return 1;
         }
         default: {
             return 0;
@@ -530,40 +542,24 @@ ofl_structs_match_ofp_len(struct ofl_match_header *match, struct ofl_exp *exp) {
     }
 }
 
-
 size_t
-ofl_structs_match_pack(struct ofl_match_header *src, struct ofp_match *dst, struct ofl_exp *exp) {
+ofl_structs_match_pack(struct ofl_match_header *src, struct ofp_match *dst, uint8_t* oxm_fields, struct ofl_exp *exp) {
     switch (src->type) {
-        case (OFPMT_STANDARD): {
-            struct ofl_match_standard *m = (struct ofl_match_standard *)src;
-
-            dst->type =          htons( m->header.type);
-            dst->length =        htons( OFPMT_STANDARD_LENGTH);
-            dst->in_port =       htonl( m->in_port);
-            dst->wildcards =     htonl( m->wildcards);
-            memcpy(&(dst->dl_src),      &(m->dl_src),      OFP_ETH_ALEN);
-            memcpy(&(dst->dl_src_mask), &(m->dl_src_mask), OFP_ETH_ALEN);
-            memcpy(&(dst->dl_dst),      &(m->dl_dst),      OFP_ETH_ALEN);
-            memcpy(&(dst->dl_dst_mask), &(m->dl_dst_mask), OFP_ETH_ALEN);
-            dst->dl_vlan =       htons( m->dl_vlan);
-            dst->dl_vlan_pcp =          m->dl_vlan_pcp;
-            memset(dst->pad1, 0x00, 1);
-            dst->dl_type =       htons( m->dl_type);
-            dst->nw_tos =               m->nw_tos;
-            dst->nw_proto =             m->nw_proto;
-            dst->nw_src =               m->nw_src;
-            dst->nw_src_mask =          m->nw_src_mask;
-            dst->nw_dst =               m ->nw_dst;
-            dst->nw_dst_mask =          m->nw_dst_mask;
-            dst->tp_src =        htons( m->tp_src);
-            dst->tp_dst =        htons( m->tp_dst);
-            dst->mpls_label =    htonl( m->mpls_label);
-            dst->mpls_tc =              m->mpls_tc;
-            memset(dst->pad2, 0x00, 3);
-            dst->metadata =      hton64(m->metadata);
-            dst->metadata_mask = hton64(m->metadata_mask);
-
-            return sizeof(struct ofp_match);
+        case (OFPMT_OXM): {
+            struct ofl_match *m = (struct ofl_match *)src;
+            struct ofpbuf *b = ofpbuf_new(0);
+            int oxm_len;
+            
+            dst->type = htons(m->header.type);
+            oxm_fields = (uint8_t*) &dst->oxm_fields;
+            dst->length = htons(sizeof(struct ofp_match));
+            if (src->length){
+                oxm_len = oxm_put_match(b, m);
+                memcpy(oxm_fields, (uint8_t*) ofpbuf_pull(b,oxm_len), oxm_len);
+                dst->length = htons(oxm_len + ((sizeof(struct ofp_match )-4)));
+                return ntohs(dst->length);
+            }
+            else return 0;
         }
         default: {
             if (exp == NULL || exp->match == NULL || exp->match->pack == NULL) {
@@ -574,3 +570,4 @@ ofl_structs_match_pack(struct ofl_match_header *src, struct ofp_match *dst, stru
         }
     }
 }
+

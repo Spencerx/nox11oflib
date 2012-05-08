@@ -39,6 +39,7 @@
 #include "ofl-utils.h"
 #include "ofl-packets.h"
 #include "ofl-log.h"
+#include "../lib/oxm-match.h"
 #include "openflow/openflow.h"
 
 #define LOG_MODULE ofl_str_u
@@ -167,7 +168,7 @@ ofl_structs_instructions_unpack(struct ofp_instruction *src, size_t *len, struct
 
             if (exp == NULL || exp->inst == NULL || exp->inst->unpack == NULL) {
                 OFL_LOG_WARN(LOG_MODULE, "Received EXPERIMENTER instruction, but no callback was given.");
-                return ofl_error(OFPET_BAD_INSTRUCTION, OFPBIC_UNSUP_EXP_INST);
+                return ofl_error(OFPET_BAD_INSTRUCTION, OFPBIC_UNSUP_INST);
             }
             error = exp->inst->unpack(src, &ilen, &inst);
             if (error) {
@@ -264,14 +265,15 @@ ofl_structs_bucket_unpack(struct ofp_bucket *src, size_t *len, uint8_t gtype, st
 
 
 ofl_err
-ofl_structs_flow_stats_unpack(struct ofp_flow_stats *src, size_t *len, struct ofl_flow_stats **dst, struct ofl_exp *exp) {
+ofl_structs_flow_stats_unpack(struct ofp_flow_stats *src, uint8_t *buf, size_t *len, struct ofl_flow_stats **dst, struct ofl_exp *exp) {
     struct ofl_flow_stats *s;
     struct ofp_instruction *inst;
     ofl_err error;
     size_t slen;
     size_t i;
+    int match_pos;
 
-    if (*len < (sizeof(struct ofp_flow_stats) - sizeof(struct ofp_match))) {
+    if (*len < (sizeof(struct ofp_flow_stats) - ntohs(src->match.length))) {
         OFL_LOG_WARN(LOG_MODULE, "Received flow stats has invalid length (%zu).", *len);
         return ofl_error(OFPET_BAD_ACTION, OFPBRC_BAD_LEN);
     }
@@ -293,7 +295,6 @@ ofl_structs_flow_stats_unpack(struct ofp_flow_stats *src, size_t *len, struct of
     slen = ntohs(src->length) - (sizeof(struct ofp_flow_stats) - sizeof(struct ofp_match));
 
     s = (struct ofl_flow_stats *)malloc(sizeof(struct ofl_flow_stats));
-
     s->table_id =             src->table_id;
     s->duration_sec =  ntohl( src->duration_sec);
     s->duration_nsec = ntohl( src->duration_nsec);
@@ -304,22 +305,25 @@ ofl_structs_flow_stats_unpack(struct ofp_flow_stats *src, size_t *len, struct of
     s->packet_count =  ntoh64(src->packet_count);
     s->byte_count =    ntoh64(src->byte_count);
 
-    error = ofl_structs_match_unpack(&(src->match), &slen, &(s->match), exp);
+    match_pos = sizeof(struct ofp_flow_stats) - 4;
+
+    error = ofl_structs_match_unpack(&(src->match),buf + match_pos , &slen, &(s->match), exp);
     if (error) {
         free(s);
         return error;
     }
-
-    error = ofl_utils_count_ofp_instructions(src->instructions, slen, &s->instructions_num);
+    error = ofl_utils_count_ofp_instructions((struct ofp_instruction *) (buf + ROUND_UP(match_pos + s->match->length,8)), 
+                                            slen, &s->instructions_num);
+    
     if (error) {
         ofl_structs_free_match(s->match, exp);
         free(s);
         return error;
     }
-    s->instructions = (struct ofl_instruction_header **)malloc(s->instructions_num * sizeof(struct ofl_instruction_header *));
+   s->instructions = (struct ofl_instruction_header **)malloc(s->instructions_num * sizeof(struct ofl_instruction_header *));
 
-    inst = src->instructions;
-    for (i = 0; i < s->instructions_num; i++) {
+   inst = (struct ofp_instruction *) (buf + ROUND_UP(match_pos + s->match->length,8));
+   for (i = 0; i < s->instructions_num; i++) {
         error = ofl_structs_instructions_unpack(inst, &slen, &(s->instructions[i]), exp);
         if (error) {
             OFL_UTILS_FREE_ARR_FUN2(s->instructions, i,
@@ -336,7 +340,6 @@ ofl_structs_flow_stats_unpack(struct ofp_flow_stats *src, size_t *len, struct of
         ofl_structs_free_flow_stats(s, exp);
         return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
     }
-
     *len -= ntohs(src->length);
     *dst = s;
     return 0;
@@ -712,104 +715,32 @@ ofl_structs_bucket_counter_unpack(struct ofp_bucket_counter *src, size_t *len, s
 }
 
 static ofl_err
-ofl_structs_match_standard_unpack(struct ofp_match *src, size_t *len, struct ofl_match_standard **dst) {
-    struct ofl_match_standard *m;
+ofl_structs_oxm_match_unpack(struct ofp_match* src, uint8_t* buf, size_t *len, struct ofl_match **dst){
 
-    if (*len < OFPMT_STANDARD_LENGTH) {
-        OFL_LOG_WARN(LOG_MODULE, "Received standard match is too short (%zu).", *len);
-        return ofl_error(OFPET_BAD_MATCH, OFPBMC_BAD_LEN);
-    }
-
-    if (*len < ntohs(src->length)) {
-        OFL_LOG_WARN(LOG_MODULE, "Received standard match has invalid length (set to %u, but only %zu received).", ntohs(src->length), *len);
-        return ofl_error(OFPET_BAD_MATCH, OFPBMC_BAD_LEN);
-    }
-
-    // NOTE: According to oftest/oft-1.1 VlanWildOutrange tests,
-    //       VID is only to be tested if it is not wildcarded
-    if (((ntohl(src->wildcards) & OFPFW_DL_VLAN) == 0) &&
-            (ntohs(src->dl_vlan) != OFPVID_NONE) && (ntohs(src->dl_vlan) != OFPVID_ANY) &&
-            (ntohs(src->dl_vlan) > VLAN_VID_MAX)) {
-        OFL_LOG_WARN(LOG_MODULE, "Received match has invalid vlan vid (%u).", ntohs(src->dl_vlan));
-        return ofl_error(OFPET_BAD_MATCH, OFPBMC_BAD_VALUE);
-    }
-
-    // NOTE: According to oftest/oft-1.1 VlanWildOutrange tests,
-    //       PCP is only to be tested if it is not wildcarded
-    if (((ntohl(src->wildcards) & OFPFW_DL_VLAN_PCP) == 0) &&
-           (src->dl_vlan_pcp > VLAN_PCP_MAX)) {
-        OFL_LOG_WARN(LOG_MODULE, "Received match has invalid vlan pcp (%u).", src->dl_vlan_pcp);
-        return ofl_error(OFPET_BAD_MATCH, OFPBMC_BAD_VALUE);
-    }
-
-    // NOTE: According to oftest/oft-1.1 MplsWildLabelExactTcOutrange tests,
-    //       Label is only to be tested if it is not wildcarded
-    if (((ntohl(src->wildcards) & OFPFW_MPLS_LABEL) == 0) &&
-            (ntohl(src->mpls_label) > MPLS_LABEL_MAX)) {
-        OFL_LOG_WARN(LOG_MODULE, "Received match has invalid mpls label (%u).", ntohl(src->mpls_label));
-        return ofl_error(OFPET_BAD_MATCH, OFPBMC_BAD_VALUE);
-    }
-
-    // NOTE: According to oftest/oft-1.1 MplsWildLabelExactTcOutrange tests,
-    //       TC is only to be tested if it is not wildcarded
-    if (((ntohl(src->wildcards) & OFPFW_MPLS_TC) == 0) &&
-            (src->mpls_tc > MPLS_TC_MAX)) {
-        OFL_LOG_WARN(LOG_MODULE, "Received match has invalid mpls tc (%u).", src->mpls_tc);
-        return ofl_error(OFPET_BAD_MATCH, OFPBMC_BAD_VALUE);
-    }
-    *len -= OFPMT_STANDARD_LENGTH;
-
-    /* NOTE: According to 1.1 spec. only those protocols' fields should be
-             taken into account, which are explicitly matched (MPLS, ARP, IP,
-             TCP, UDP) It is up to the library user to handle this either by
-             updating this match structure, or by other means. */
-    m = (struct ofl_match_standard *)malloc(sizeof(struct ofl_match_standard));
-    m->header.type =          OFPMT_STANDARD;
-    m->in_port =       ntohl( src->in_port);
-    m->wildcards =     ntohl( src->wildcards);
-
-    /* ETH */
-    memcpy(&(m->dl_src),      &(src->dl_src),      OFP_ETH_ALEN);
-    memcpy(&(m->dl_src_mask), &(src->dl_src_mask), OFP_ETH_ALEN);
-    memcpy(&(m->dl_dst),      &(src->dl_dst),      OFP_ETH_ALEN);
-    memcpy(&(m->dl_dst_mask), &(src->dl_dst_mask), OFP_ETH_ALEN);
-
-    /* VLAN */
-    m->dl_vlan =       ntohs( src->dl_vlan);
-    m->dl_vlan_pcp =          src->dl_vlan_pcp;
-
-    m->dl_type =       ntohs( src->dl_type);
-
-    /* IPv4 / ARP */
-    m->nw_tos =               src->nw_tos;
-    m->nw_proto =             src->nw_proto;
-    m->nw_src =               src->nw_src;
-    m->nw_src_mask =          src->nw_src_mask;
-    m->nw_dst =               src->nw_dst;
-    m->nw_dst_mask =          src->nw_dst_mask;
-
-    /* Transport */
-    m->tp_src =        ntohs( src->tp_src);
-    m->tp_dst =        ntohs( src->tp_dst);
-
-    /* MPLS */
-    m->mpls_label =    ntohl( src->mpls_label);
-    m->mpls_tc =              src->mpls_tc;
-
-    /* Metadata */
-    m->metadata =      ntoh64(src->metadata);
-    m->metadata_mask = ntoh64(src->metadata_mask);
+     int error = 0;
+     struct ofpbuf *b = ofpbuf_new(0);
+     struct ofl_match *m = (struct ofl_match*) malloc(sizeof(struct ofl_match));
+     m->header.type = ntohs(src->type);
+     m->header.length = ntohs(src->length) - (sizeof(struct ofp_match) -4);
+    *len -= ROUND_UP(ntohs(src->length),8);
+    
+     if(ntohs(src->length) > sizeof(struct ofp_match)){
+         ofpbuf_put(b, buf, m->header.length); 
+         error = oxm_pull_match(b,m,m->header.length);
+     }
+    else m->header.length = 0;
 
     *dst = m;
-    return 0;
+    return error;
 }
 
 ofl_err
-ofl_structs_match_unpack(struct ofp_match *src, size_t *len, struct ofl_match_header **dst, struct ofl_exp *exp) {
+ofl_structs_match_unpack(struct ofp_match *src,uint8_t * buf, size_t *len, struct ofl_match_header **dst, struct ofl_exp *exp) {
 
     switch (ntohs(src->type)) {
-        case (OFPMT_STANDARD): {
-            return ofl_structs_match_standard_unpack(src, len, (struct ofl_match_standard **)dst);
+        case (OFPMT_OXM): {
+             return ofl_structs_oxm_match_unpack(src, buf, len, (struct ofl_match**) dst );       
+            
         }
         default: {
             if (exp == NULL || exp->match == NULL || exp->match->unpack == NULL) {

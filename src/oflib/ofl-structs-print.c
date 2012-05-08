@@ -35,6 +35,9 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <inttypes.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include "../lib/oxm-match.h"
 #include "openflow/openflow.h"
 
 #include "ofl.h"
@@ -150,7 +153,7 @@ ofl_structs_instruction_print(FILE *stream, struct ofl_instruction_header *inst,
 
 char *
 ofl_structs_match_to_string(struct ofl_match_header *match, struct ofl_exp *exp) {
-        char *str;
+    char *str;
     size_t str_size;
     FILE *stream = open_memstream(&str, &str_size);
     ofl_structs_match_print(stream, match, exp);
@@ -158,91 +161,272 @@ ofl_structs_match_to_string(struct ofl_match_header *match, struct ofl_exp *exp)
     return str;
 }
 
+static void 
+print_oxm_tlv(FILE *stream, struct ofl_match_tlv *f, size_t *size){
+                
+                if (f->header == OXM_OF_IN_PORT){
+                    fprintf(stream, "in_port=%d",(uint32_t) *f->value);
+                    *size -= 8;   
+                    if (*size > 4)                                  
+                        fprintf(stream, ", ");
+                }
+                else if (f->header == OXM_OF_IN_PHY_PORT){
+                            fprintf(stream, "in_phy_port=%d",(uint32_t) *f->value);
+                            *size -= 8;   
+                            if (*size > 4)                                  
+                                fprintf(stream, ", ");
+                }
+                else if (f->header == OXM_OF_VLAN_VID){
+                            if ((uint16_t) *f->value == OFPVID_NONE)
+                                fprintf(stream, "vlan_vid= none");
+                            else if ((uint16_t) *f->value == OFPVID_PRESENT)
+                                fprintf(stream, "vlan_vid= present");
+                            else fprintf(stream, "vlan_vid= %d",(uint16_t) *f->value);
+                            *size -= 6;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }
+                else if (f->header == OXM_OF_VLAN_PCP){
+                            fprintf(stream, "vlan_pcp= %d", *f->value & 0x7);
+                            *size -= 5;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                } 
+                else if (f->header == OXM_OF_ETH_TYPE){
+                            fprintf(stream, "eth_type=0x");
+                            uint16_t *v = (uint16_t *) f->value;
+                            fprintf(stream,"%x",  *v);
+                            *size -= 6;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }
+                else if (f->header == OXM_OF_TCP_SRC){
+                            fprintf(stream, "tcp_src=%d",(uint16_t) *f->value);
+                            *size -= 6;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }
+                else if (f->header == OXM_OF_TCP_DST){
+                            fprintf(stream, "tcp_dst=%d",(uint16_t) *f->value);
+                            *size -= 6;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }
+                else if (f->header == OXM_OF_UDP_SRC){
+                            fprintf(stream, "udp_src=%d",(uint16_t) *f->value);
+                            *size -= 6;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }
+                else if (f->header == OXM_OF_UDP_DST){
+                            fprintf(stream, "udp_dst=%d",(uint16_t) *f->value);
+                            *size -= 6;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }
+                else if (f->header == OXM_OF_SCTP_SRC){
+                            fprintf(stream, "sctp_src=%d",(uint16_t) *f->value);
+                            *size -= 6;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }
+                else if (f->header == OXM_OF_SCTP_DST){
+                            fprintf(stream, "sctp_dst=%d",(uint16_t) *f->value);
+                            *size -= 6;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }                  
+                else if (f->header == OXM_OF_ETH_SRC || f->header == OXM_OF_ETH_SRC_W){
+                            fprintf(stream, "eth_src=\""ETH_ADDR_FMT"\"", ETH_ADDR_ARGS(f->value));
+                            *size -= 10;                                
+                            if (OXM_HASMASK(f->header)){
+                                *size -= 6;
+                                fprintf(stream, "eth_src_mask=\""ETH_ADDR_FMT"\"", ETH_ADDR_ARGS(f->value + 6));
+                            }
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }
+                else if (f->header == OXM_OF_ETH_DST || f->header == OXM_OF_ETH_DST_W){
+                            fprintf(stream, "eth_dst=\""ETH_ADDR_FMT"\"", ETH_ADDR_ARGS(f->value));
+                            *size -= 10;                                
+                            if (OXM_HASMASK(f->header)){
+                                *size -= 6;
+                                fprintf(stream, "eth_dst_mask=\""ETH_ADDR_FMT"\"", ETH_ADDR_ARGS(f->value + 6));
+                            }
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }                                 
+                else if (f->header == OXM_OF_IPV4_SRC || f->header == OXM_OF_IPV4_SRC_W){
+                            fprintf(stream, "ipv4_src=\""IP_FMT"\"",IP_ARGS(f->value));
+                            *size -= 8;                                
+                            if (OXM_HASMASK(f->header)){
+                                *size -= 4;
+                                fprintf(stream, "ipv4_src_mask=\""IP_FMT"\"",IP_ARGS(f->value + 4));
+                            }
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }
+                else if (f->header == OXM_OF_IP_DSCP){
+                            fprintf(stream, "ip_dscp= %d", *f->value & 0x3f);
+                            *size -= 5;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                } 
+                else if (f->header == OXM_OF_IP_ECN){
+                            fprintf(stream, "ip_ecn= %d", *f->value & 0x3);
+                            *size -= 5;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                } 
+                else if (f->header == OXM_OF_ICMPV4_TYPE){
+                            fprintf(stream, "icmpv4_type= %d", *f->value);
+                            *size -= 5;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                } 
+                else if (f->header == OXM_OF_ICMPV4_CODE){
+                            fprintf(stream, "icmpv4_code= %d", *f->value);
+                            *size -= 5;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }   
+                else if (f->header == OXM_OF_IPV4_DST || f->header == OXM_OF_IPV4_DST_W){
+                            fprintf(stream, "ipv4_dst=\""IP_FMT"\"",IP_ARGS(f->value));
+                            *size -= 8;
+                            if (OXM_HASMASK(f->header)){
+                                *size -= 4;
+                                fprintf(stream, "ipv4_dst_mask=\""IP_FMT"\"",IP_ARGS(f->value + 4));
+                            }                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }   
+                else if (f->header == OXM_OF_ARP_SPA || f->header == OXM_OF_ARP_SPA_W ){
+                            fprintf(stream, "arp_sha=\""IP_FMT"\"",IP_ARGS(f->value));
+                            *size -= 8;                                
+                            if (OXM_HASMASK(f->header)){
+                                *size -= 4;
+                                fprintf(stream, "arp_sha_mask=\""IP_FMT"\"",IP_ARGS(f->value + 4));
+                            }           
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                } 
+                else if (f->header == OXM_OF_ARP_TPA || f->header == OXM_OF_ARP_TPA_W){
+                            fprintf(stream, "arp_tpa=\""IP_FMT"\"",IP_ARGS(f->value));
+                            *size -= 8;                                
+                            if (OXM_HASMASK(f->header)){
+                                *size -= 4;
+                                fprintf(stream, "arp_tpa_mask=\""IP_FMT"\"",IP_ARGS(f->value + 4));
+                            }
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                } 
+                else if (f->header == OXM_OF_ARP_OP){
+                            fprintf(stream, "arp_op=0x");
+                            uint16_t *v = (uint16_t *) f->value;
+                            fprintf(stream,"%x",  *v);
+                            *size -= 6;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }
+                else if (f->header == OXM_OF_IPV6_SRC || f->header == OXM_OF_IPV6_SRC_W ){
+                        char addr_str[INET6_ADDRSTRLEN]; 
+                        inet_ntop(AF_INET6, f->value, addr_str, INET6_ADDRSTRLEN);
+                        *size -= 20;
+                        fprintf(stream, "nw_src_ipv6=\"%s\"", addr_str);
+                        if (OXM_HASMASK(f->header)){
+                                *size -= 16;
+                                inet_ntop(AF_INET6, f->value + 16, addr_str, INET6_ADDRSTRLEN);
+                                fprintf(stream, "nw_src_ipv6_mask=\"%s\"", addr_str);
+                        }
+                        if (*size > 4)                                
+                                fprintf(stream, ", ");        
+                }
+                else if (f->header == OXM_OF_IPV6_DST || f->header == OXM_OF_IPV6_DST_W){
+                        char addr_str[INET6_ADDRSTRLEN]; 
+                        inet_ntop(AF_INET6, f->value, addr_str, INET6_ADDRSTRLEN);
+                        *size -= 20;
+                        fprintf(stream, "nw_dst_ipv6=\"%s\"", addr_str);
+                        if (OXM_HASMASK(f->header)){
+                                *size -= 16;
+                                inet_ntop(AF_INET6, f->value + 16, addr_str, INET6_ADDRSTRLEN);
+                                fprintf(stream, "nw_dst_ipv6_mask=\"%s\"", addr_str);
+                        }
+                        if (*size > 4)                                
+                                fprintf(stream, ", ");        
+                }
+                else if (f->header == OXM_OF_IPV6_ND_TARGET){
+                        char addr_str[INET6_ADDRSTRLEN]; 
+                        inet_ntop(AF_INET6, f->value, addr_str, INET6_ADDRSTRLEN);
+                        *size -= 20;
+                        fprintf(stream, "ipv6_nd_target=\"%s\"", addr_str);
+                        if (*size > 4)                                
+                                fprintf(stream, ", ");        
+                }  
+                 else if (f->header == OXM_OF_IPV6_ND_SLL){
+                            fprintf(stream, "ipv6_nd_sll=\""ETH_ADDR_FMT"\"", ETH_ADDR_ARGS(f->value));
+                            *size -= 10;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }
+                else if (f->header == OXM_OF_IPV6_ND_TLL){
+                            fprintf(stream, "ipv6_nd_tll=\""ETH_ADDR_FMT"\"", ETH_ADDR_ARGS(f->value));
+                            *size -= 10;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }
+                else if (f->header == OXM_OF_IPV6_FLABEL){
+                            uint32_t mask = 0xfffff;
+                            fprintf(stream, "ipv6_flow_label=%x",((uint32_t) *f->value) & mask );
+                            *size -= 8;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }
+                else if (f->header == OXM_OF_MPLS_LABEL){
+                            uint32_t mask = 0xfffff;
+                            fprintf(stream, "mpls_label=%x",((uint32_t) *f->value) & mask );
+                            *size -= 8;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }
+                else if (f->header == OXM_OF_MPLS_TC){
+                            fprintf(stream, "mpls_tc= %d", *f->value & 0x3);
+                            *size -= 5;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                } 
+                else if (f->header == OXM_OF_METADATA || f->header == OXM_OF_METADATA_W){
+                            fprintf(stream, "metadata= %lld", (uint64_t) *f->value);
+                            *size -= 12;
+                            if (OXM_HASMASK(f->header)){
+                                fprintf(stream, "metadata_mask= %lld", (uint64_t) *(f->value + 8));
+                                *size -= 8;
+                            }                            
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }                                                                 
+}
+
+static void print_oxm_match(FILE *stream, struct ofl_match *m){
+        struct ofl_match_tlv   *f;
+        size_t size = m->header.length;
+        fprintf(stream, "oxm{");
+        if (size) {
+            /*TODO: Create a mapping of header values and names to avoid so many comparisons */ 
+            HMAP_FOR_EACH(f, struct ofl_match_tlv, hmap_node, &m->match_fields){                             
+                print_oxm_tlv(stream, f, &size);
+            }
+        }    
+        else fprintf(stream, "all match");
+        fprintf(stream, "}");
+}
+
 void
 ofl_structs_match_print(FILE *stream, struct ofl_match_header *match, struct ofl_exp *exp) {
 
     switch (match->type) {
-        case (OFPMT_STANDARD): {
-            struct ofl_match_standard *m = (struct ofl_match_standard *)match;
-
-            fprintf(stream, "std{wc=\"0x%"PRIx32"\"", m->wildcards);
-
-            if ((m->wildcards & OFPFW_IN_PORT) == 0) {
-                fprintf(stream, ", port=\"");
-                ofl_port_print(stream, m->in_port);
-                fprintf(stream, "\"");
-            }
-            if (memcmp(m->dl_src_mask, mask_all, ETH_ADDR_LEN) == 0) {
-                fprintf(stream, ", dlsrcm=\"all\"");
-            } else {
-                fprintf(stream, ", dlsrc=\""ETH_ADDR_FMT"\"", ETH_ADDR_ARGS(m->dl_src));
-                if (memcmp(m->dl_src_mask, mask_none, ETH_ADDR_LEN) != 0) {
-                    fprintf(stream, ", dlsrcm=\""ETH_ADDR_FMT"\"", ETH_ADDR_ARGS(m->dl_src_mask));
-                }
-            }
-            if (memcmp(m->dl_dst_mask, mask_all, ETH_ADDR_LEN) == 0) {
-                fprintf(stream, ", dldstm=\"all\"");
-            } else {
-                fprintf(stream, ", dldst=\""ETH_ADDR_FMT"\"", ETH_ADDR_ARGS(m->dl_dst));
-                if (memcmp(m->dl_dst_mask, mask_none, ETH_ADDR_LEN) != 0) {
-                    fprintf(stream, ", dldstm=\""ETH_ADDR_FMT"\"", ETH_ADDR_ARGS(m->dl_dst_mask));
-                }
-            }
-            if ((m->wildcards & OFPFW_DL_VLAN) == 0) {
-                fprintf(stream, ", vlan=\"");
-                ofl_vlan_vid_print(stream, m->dl_vlan);
-                fprintf(stream, "\"");
-            }
-            if ((m->wildcards & OFPFW_DL_VLAN_PCP) == 0) {
-                fprintf(stream, ", vlanpcp=\"%u\"", m->dl_vlan_pcp);
-            }
-            if ((m->wildcards & OFPFW_DL_TYPE) == 0) {
-                fprintf(stream, ", dltype=\"0x%"PRIx16"\"", m->dl_type);
-            }
-            if ((m->wildcards & OFPFW_NW_TOS) == 0) {
-                fprintf(stream, ", nwtos=\"%u\"", m->nw_tos);
-            }
-            if ((m->wildcards & OFPFW_NW_PROTO) == 0) {
-                fprintf(stream, ", nwprt=\"0x%04"PRIx16"\"", m->nw_proto);
-            }
-            if ((m->nw_src_mask == 0xffffffff)) {
-                fprintf(stream, ", nwsrcm=\"all\"");
-            } else {
-                fprintf(stream, ", nwsrc=\""IP_FMT"\"", IP_ARGS(&m->nw_src));
-                if ((m->nw_src_mask != 0x00000000)) {
-                    fprintf(stream, ", nwsrcm=\""IP_FMT"\"", IP_ARGS(&m->nw_src_mask));
-                }
-            }
-            if ((m->nw_dst_mask == 0xffffffff)) {
-                fprintf(stream, ", nwdstm=\"all\"");
-            } else {
-                fprintf(stream, ", nwdst=\""IP_FMT"\"", IP_ARGS(&m->nw_dst));
-                if ((m->nw_dst_mask != 0x00000000)) {
-                    fprintf(stream, ", nwdstm=\""IP_FMT"\"", IP_ARGS(&m->nw_dst_mask));
-                }
-            }
-            if ((m->wildcards & OFPFW_TP_SRC) == 0) {
-                fprintf(stream, ", tpsrc=\"%u\"", m->tp_src);
-            }
-            if ((m->wildcards & OFPFW_TP_DST) == 0) {
-                fprintf(stream, ", tpdst=\"%u\"", m->tp_dst);
-            }
-            if ((m->wildcards & OFPFW_MPLS_LABEL) == 0) {
-                fprintf(stream, ", mplslbl=\"0x%05"PRIx32"\"", m->mpls_label);
-            }
-            if ((m->wildcards & OFPFW_MPLS_TC) == 0) {
-                fprintf(stream, ", mplstc=\"%u\"", m->mpls_tc);
-            }
-            if (memcmp(&m->metadata_mask, mask_all, 8) == 0) {
-                fprintf(stream, ", metam=\"all\"");
-            } else {
-                fprintf(stream, ", meta=\"0x%"PRIx64"\"", m->metadata);
-                if (memcmp(&m->metadata_mask, mask_none, 8) != 0) {
-                    fprintf(stream, ", metam=\"0x%"PRIx64"\"", m->metadata_mask);
-                }
-            }
-            fprintf(stream, "}");
-
+        case (OFPMT_OXM): {
+            struct ofl_match *m = (struct ofl_match*) match;
+            print_oxm_match(stream, m);
             break;
         }
         default: {
@@ -349,9 +533,7 @@ ofl_structs_queue_prop_print(FILE *stream, struct ofl_queue_prop_header *p) {
             fprintf(stream, "{rate=\"%u\"}", pm->rate);
             break;
         }
-        case (OFPQT_NONE): {
-            break;
-        }
+        
     }
 
 }

@@ -34,7 +34,7 @@
 
 #include <sys/types.h>
 
-#include "openflow/openflow.h"
+#include "../include/openflow/openflow.h"
 
 struct ofl_msg_experimenter;
 struct ofl_msg_stats_request_header;
