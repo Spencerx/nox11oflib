@@ -32,7 +32,7 @@ class Buffer;
 
 class Flow {
 public:
-	struct ofl_match match;
+  struct ofl_match match;
 
   /** Empty constructor
    */

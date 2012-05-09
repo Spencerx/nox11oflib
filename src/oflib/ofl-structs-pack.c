@@ -34,7 +34,7 @@
 #include <netinet/in.h>
 
 #include "../include/openflow/openflow.h"
-#include "../lib/oxm-match.h"
+#include "../libc/oxm-match.h"
 #include "ofl.h"
 #include "ofl-actions.h"
 #include "ofl-structs.h"

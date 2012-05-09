@@ -39,6 +39,8 @@
 #include <config.h>
 #include <sys/types.h>
 
+#include "../oflib/ofl-match.h"
+
 namespace vigil {
 
 static Vlog_module log("flow");
@@ -56,13 +58,7 @@ Flow::Flow(const struct ofl_match *match_) {
 
 void
 Flow::init() {
-	  memset(&match, 0x00, sizeof(struct ofl_match));
-	  match.header.type = OFPMT_STANDARD;
-	  memset(&match.dl_src_mask, 0xff, ETH_ADDR_LEN);
-	  memset(&match.dl_dst_mask, 0xff, ETH_ADDR_LEN);
-	  match.nw_src_mask   = 0xffffffff;
-	  match.nw_dst_mask   = 0xffffffff;
-	  match.metadata_mask = 0xffffffffffffffffULL;
+    ofl_structs_match_init(&this->match);
 }
 
 const std::string
