@@ -126,7 +126,7 @@ Discovery::packet_in_handler(const Event& e) {
         return CONTINUE;
     }
 
-    Port dport(ome.dpid, in->in_port);
+    Port dport(ome.dpid, /*in->in_port*/1);
 
     if (sport == dport) {
         lg.dbg("Loop detected.");

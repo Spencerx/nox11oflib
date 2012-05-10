@@ -28,3 +28,4 @@ liboflib_la_SOURCES = \
 
 AM_CPPFLAGS += -xc++ -DOFL_LOG_VLOG_CC
 
+liboflib_la_LIBADD = ../libc/libopenflow.la 

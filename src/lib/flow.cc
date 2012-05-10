@@ -39,7 +39,6 @@
 #include <config.h>
 #include <sys/types.h>
 
-#include "../oflib/ofl-match.h"
 
 namespace vigil {
 

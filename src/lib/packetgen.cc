@@ -155,9 +155,10 @@ std::auto_ptr<Buffer> Packetgen::do_recv_openflow(int& error)
     opi->header.length = htons(b->size());
     opi->buffer_id = UINT32_MAX;
     opi->total_len = htons(DEFAULT_SIZE);
-    opi->in_port = htons(0);
+    /* TODO: Use OXM and data payload from b */
+    //opi->in_port = htons(0);
     opi->reason = OFPR_NO_MATCH;
-    ::memcpy(opi->data, data.data(), DEFAULT_SIZE);
+    //::memcpy(opi->data, data.data(), DEFAULT_SIZE);
     error = 0;
     return b;
 }

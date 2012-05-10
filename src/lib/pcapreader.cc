@@ -220,9 +220,10 @@ std::auto_ptr<Buffer> Pcapreader::do_recv_openflow(int& error)
     opi->header.length = htons(b->size());
     opi->buffer_id = UINT32_MAX;
     opi->total_len = htons(delayed_pcap_header.len);
-    opi->in_port = htons(0);
+    /* TODO: Use OXM and data payload from b */
+    //opi->in_port = htons(0);
     opi->reason = OFPR_NO_MATCH;
-    ::memcpy(opi->data, delayed_pcap_data, delayed_pcap_header.len);
+    //::memcpy(opi->data, delayed_pcap_data, delayed_pcap_header.len);
     delayed_pcap_data = NULL; 
     error = 0;
     return b;

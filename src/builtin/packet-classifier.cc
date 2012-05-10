@@ -41,9 +41,9 @@ Packet_classifier::handle_packet_in(const Event& e)
     struct ofl_msg_packet_in *opi = (struct ofl_msg_packet_in *)**pi.msg;
 
     const Rule<Packet_expr, Pexpr_action> *match;
-    Flow flow(opi->in_port, Nonowning_buffer(opi->data, opi->data_length));
+    //Flow flow(opi->in_port, Nonowning_buffer(opi->data, opi->data_length));
 
-    result.set_data(&flow);
+    //result.set_data(&flow);
     get_rules(result);
     match = result.next();
     if (match == NULL) {

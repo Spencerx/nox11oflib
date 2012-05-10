@@ -38,7 +38,7 @@ get_field<Packet_expr, Flow>(uint32_t field, const Flow& flow,
         return false;
     }
 
-    switch (field) {
+    /*switch (field) {
     case Packet_expr::AP_SRC:
         value = flow.match.in_port;
         return true;
@@ -76,7 +76,7 @@ get_field<Packet_expr, Flow>(uint32_t field, const Flow& flow,
         return true;
     }
     log.warn("unretrievable field %u", field);
-    return false;
+    return false;*/
 }
 
 template<>
@@ -221,7 +221,8 @@ matches(uint32_t rule_id, const Packet_expr& expr, const Flow& flow)
                              | Cnode<Packet_expr, void*>::MASKS[Packet_expr::GROUP_SRC]
                              | Cnode<Packet_expr, void*>::MASKS[Packet_expr::GROUP_DST])));
 
-    return (((expr.wildcards & Cnode<Packet_expr, void*>::MASKS[Packet_expr::AP_SRC])
+    return 1;
+    /*return (((expr.wildcards & Cnode<Packet_expr, void*>::MASKS[Packet_expr::AP_SRC])
              || expr.ap_src == flow.match.in_port)
             && ((expr.wildcards & Cnode<Packet_expr, void*>::MASKS[Packet_expr::DL_VLAN])
                 || expr.dl_vlan == flow.match.dl_vlan)
@@ -242,7 +243,7 @@ matches(uint32_t rule_id, const Packet_expr& expr, const Flow& flow)
             && ((expr.wildcards & Cnode<Packet_expr, void*>::MASKS[Packet_expr::TP_SRC])
                 || expr.tp_src == flow.match.tp_src)
             && ((expr.wildcards & Cnode<Packet_expr, void*>::MASKS[Packet_expr::TP_DST])
-                || expr.tp_dst == flow.match.tp_dst));
+                || expr.tp_dst == flow.match.tp_dst));*/
 }
 
 template <>

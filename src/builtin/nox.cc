@@ -726,7 +726,7 @@ void Handshake_fsm::register_switch() {
     oconn->set_datapath_id(dpid);
     register_conn(oconn.release(), disconnected);
 
-    /* delete all flows on this switch */
+    /* delete all flows on this switch 
     struct ofl_match_standard match;
     match.header.type = OFPMT_STANDARD;
     match.wildcards = OFPFW_ALL;
@@ -750,11 +750,11 @@ void Handshake_fsm::register_switch() {
     mod.instructions = NULL;
 
     /* XXX OK to do non-blocking send?  We do so with all other
-     * commands on switch join */
-    if ( send_openflow_msg(dpid, (struct ofl_msg_header *)&mod, 0/*xid*/, false) == EAGAIN) {
+     * commands on switch join 
+    if ( send_openflow_msg(dpid, (struct ofl_msg_header *)&mod, 0/*xid, false) == EAGAIN) {
           lg.err("Error, unable to clear flow table on startup");
     }
-
+    */
     lg.dbg("Registering switch with DPID = %"PRIx64"\n",dpid.as_host()); 
     /* Really we want to just dispatch this event immediately, but that would
      * prevent any handlers for it from blocking, since we're running inside
