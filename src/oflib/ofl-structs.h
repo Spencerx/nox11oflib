@@ -40,7 +40,7 @@
 #include "ofl.h"
 #include "ofl-actions.h"
 #include "ofl-packets.h"
-#include "../lib/hmap.h"
+#include "../libc/hmap.h"
 
 
 struct ofl_exp;

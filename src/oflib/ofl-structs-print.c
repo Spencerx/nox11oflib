@@ -36,6 +36,7 @@
 #include <ctype.h>
 #include <inttypes.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include "oxm-match.h"
 #include "openflow/openflow.h"
 

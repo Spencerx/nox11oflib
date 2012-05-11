@@ -73,7 +73,8 @@ libnoxcore_la_LIBADD =							\
 	-lcrypto							\
 	-lpthread							\
 	$(PCAP_LDFLAGS)							\
-	$(SSL_LIBS)
+	$(SSL_LIBS) \
+	../oflib/liboflib.la
 
 libnoxcore_la_LDFLAGS = $(AM_LDFLAGS) $(BOOST_LDFLAGS) 
 

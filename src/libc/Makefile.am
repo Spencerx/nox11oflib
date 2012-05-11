@@ -38,8 +38,6 @@ libopenflow_la_SOURCES = \
 	libc/vlog.c \
 	libc/vlog.h 
 
-libopenflow_la_LIBADD = ../oflib/liboflib.la 
-
 AM_CPPFLAGS += -xc++ -DOFL_LOG_VLOG_CC
 
 
