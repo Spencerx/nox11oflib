@@ -23,8 +23,6 @@ libopenflow_la_SOURCES = \
 	libc/ipv6_util.h \
 	libc/list.c \
 	libc/list.h \
-	libc/oxm-match.c \
-	libc/oxm-match.h \
 	libc/ofpbuf.c \
 	libc/ofpbuf.h \
 	libc/packets.h \
@@ -40,6 +38,8 @@ libopenflow_la_SOURCES = \
 	libc/vlog.c \
 	libc/vlog.h 
 
+libopenflow_la_LIBADD = ../oflib/liboflib.la 
+
 AM_CPPFLAGS += -xc++ -DOFL_LOG_VLOG_CC
 
-libopenflow_la_LIBADD = ../oflib/liboflib.la 
+

@@ -17,6 +17,8 @@ liboflib_la_SOURCES = \
 	ofl-messages-pack.c \
 	ofl-messages-print.c \
 	ofl-messages-unpack.c \
+	oxm-match.c \
+	oxm-match.h \
 	ofl-print.c \
 	ofl-print.h \
 	ofl-structs.c \
@@ -28,4 +30,4 @@ liboflib_la_SOURCES = \
 
 AM_CPPFLAGS += -xc++ -DOFL_LOG_VLOG_CC
 
-liboflib_la_LIBADD = ../libc/libopenflow.la 
+liboflib_la_LIBADD = ../libc/libopenflow_la 

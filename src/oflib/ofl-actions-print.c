@@ -86,7 +86,7 @@ ofl_action_print(FILE *stream, struct ofl_action_header *act, struct ofl_exp *ex
         }
         case OFPAT_SET_FIELD:{
             struct ofl_action_set_field *a = (struct ofl_action_set_field *)act;
-            fprintf(stream, "{field=%d", *a->value);
+            fprintf(stream, "{field:%d=%d",a->field, *a->value);
             break;
         }
         case OFPAT_COPY_TTL_OUT:

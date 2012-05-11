@@ -21,4 +21,4 @@ libbuiltin_la_SOURCES = \
 	packet-classifier.cc		\
 	static-deployer.cc
 
-libbuiltin_la_LIBADD = ../oflib/liboflib.la ../libc/libopenflow.la 
+libbuiltin_la_LIBADD = ../oflib/liboflib.la 

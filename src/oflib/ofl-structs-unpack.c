@@ -39,7 +39,7 @@
 #include "ofl-utils.h"
 #include "ofl-packets.h"
 #include "ofl-log.h"
-#include "../libc/oxm-match.h"
+#include "oxm-match.h"
 #include "openflow/openflow.h"
 
 #define LOG_MODULE ofl_str_u
@@ -719,7 +719,7 @@ ofl_structs_oxm_match_unpack(struct ofp_match* src, uint8_t* buf, size_t *len, s
 
      int error = 0;
      struct ofpbuf *b = ofpbuf_new(0);
-     struct ofl_match *m = (struct ofl_match*) malloc(sizeof(struct ofl_match));
+     struct ofl_match *m = malloc(sizeof(struct ofl_match));
      m->header.type = ntohs(src->type);
      m->header.length = ntohs(src->length) - (sizeof(struct ofp_match) -4);
     *len -= ROUND_UP(ntohs(src->length),8);

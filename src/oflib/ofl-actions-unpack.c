@@ -42,7 +42,7 @@
 #include "ofl-packets.h"
 #include "ofl-log.h"
 #include "openflow/openflow.h"
-#include "../libc/oxm-match.h"
+#include "oxm-match.h"
 
 #define LOG_MODULE ofl_act_u
 OFL_LOG_INIT(LOG_MODULE)
@@ -97,9 +97,6 @@ ofl_actions_unpack(struct ofp_action_header *src, size_t *len, struct ofl_action
             *dst = (struct ofl_action_header *)da;
             break;
         }
-
-      
-
         case OFPAT_COPY_TTL_OUT: {
             //ofp_action_header length was already checked
             *len -= sizeof(struct ofp_action_header);
@@ -280,7 +277,7 @@ ofl_actions_unpack(struct ofp_action_header *src, size_t *len, struct ofl_action
             
             uint8_t *value = (uint8_t *) src + sizeof (struct ofp_action_set_field);
             da->len = 4 + OXM_LENGTH(da->field);
-            da->value = (uint8_t *) malloc(OXM_LENGTH(da->field));
+            da->value = malloc(OXM_LENGTH(da->field));
             memcpy(da->value , value, OXM_LENGTH(da->field));
      	    *len -= ROUND_UP(ntohs(src->len),8);
      	    *dst = (struct ofl_action_header *)da;

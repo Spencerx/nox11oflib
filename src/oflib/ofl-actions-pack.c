@@ -33,7 +33,7 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../libc/oxm-match.h"
+#include "oxm-match.h"
 #include "ofl.h"
 #include "ofl-utils.h"
 #include "ofl-actions.h"
@@ -200,7 +200,7 @@ ofl_actions_pack(struct ofl_action_header *src, struct ofp_action_header *dst, u
             /*Put OXM header in the field*/
             memcpy(da->field, &sa->field, 4);            
             memcpy(data + (sizeof(struct ofp_action_set_field)), sa->value,OXM_LENGTH(sa->field));
-            return sizeof(ntohs((da->len)));
+            return ntohs((da->len));
         
         }
         case OFPAT_EXPERIMENTER: {

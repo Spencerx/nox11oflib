@@ -260,6 +260,7 @@ ofl_msg_pack_flow_mod(struct ofl_msg_flow_mod *msg, uint8_t **buf, size_t *buf_l
 
     *buf_len = ROUND_UP(sizeof(struct ofp_flow_mod)- 4 + msg->match->length,8) + 
                 ofl_structs_instructions_ofp_total_len(msg->instructions, msg->instructions_num, exp);
+
     *buf     = (uint8_t *)malloc(*buf_len);
     flow_mod = (struct ofp_flow_mod *)(*buf);
     flow_mod->cookie       = hton64(msg->cookie);

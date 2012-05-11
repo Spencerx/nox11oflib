@@ -33,8 +33,8 @@
 #include <string.h>
 #include <netinet/in.h>
 
-#include "../include/openflow/openflow.h"
-#include "../libc/oxm-match.h"
+#include "include/openflow/openflow.h"
+#include "oxm-match.h"
 #include "ofl.h"
 #include "ofl-actions.h"
 #include "ofl-structs.h"
@@ -241,7 +241,7 @@ ofl_structs_flow_stats_pack(struct ofl_flow_stats *src, uint8_t *dst, struct ofl
     total_len = ROUND_UP(sizeof(struct ofp_flow_stats) -4 + src->match->length,8) +
                 ofl_structs_instructions_ofp_total_len(src->instructions, src->instructions_num, exp);
     
-    dst = (uint8_t *) malloc(total_len);
+    dst = (uint8_t *)malloc(total_len);
     flow_stats = (struct ofp_flow_stats*) dst;
     flow_stats->length = htons(total_len);
     
