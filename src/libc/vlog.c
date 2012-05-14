@@ -51,6 +51,8 @@
 
 #define LOG_MODULE VLM_vlog
 
+const char ofp_logdir[] = "/usr/local/var/log/openflow";
+
 /* Name for each logging level. */
 static const char *level_names[VLL_N_LEVELS] = {
 #define VLOG_LEVEL(NAME, SYSLOG_LEVEL) #NAME,

@@ -23,12 +23,13 @@ liboflib_la_SOURCES = \
 	ofl-print.h \
 	ofl-structs.c \
 	ofl-structs.h \
+	ofl-structs-match.c \
 	ofl-structs-pack.c \
 	ofl-structs-print.c \
 	ofl-structs-unpack.c \
 	ofl-utils.h
 
-liboflib_la_LIBADD = ../libc/libopenflow_la
+liboflib_la_LIBADD = ../libc/libopenflow.la
 
 AM_CPPFLAGS += -xc++ -DOFL_LOG_VLOG_CC
 

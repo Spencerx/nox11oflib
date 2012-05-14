@@ -26,6 +26,8 @@ libopenflow_la_SOURCES = \
 	libc/ofpbuf.c \
 	libc/ofpbuf.h \
 	libc/packets.h \
+	libc/random.c \
+	libc/random.h \
 	libc/sat-math.h \
 	libc/tag.c \
 	libc/tag.h \

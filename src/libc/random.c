@@ -57,7 +57,7 @@ random_init(void)
 void
 random_bytes(void *p_, size_t n)
 {
-    uint8_t *p = p_;
+    uint8_t *p = (uint8_t *) p_;
     random_init();
     while (n--) {
         *p++ = rand();
