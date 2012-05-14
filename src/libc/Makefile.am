@@ -6,39 +6,39 @@ AM_CPPFLAGS += $(OPENFLOW_CPPFLAGS)
 AM_CPPFLAGS += -I$(top_srcdir)/src/nox
 
 libopenflow_la_SOURCES = \
-	libc/compiler.h \
-	libc/dirs.c \
-	libc/dirs.h \
-	libc/dynamic-string.c \
-	libc/dynamic-string.h \
-	libc/fatal-signal.c \
-	libc/fatal-signal.h \
-	libc/fault.c \
-	libc/fault.h \
-	libc/hash.c \
-	libc/hash.h \
-	libc/hmap.c \
-	libc/hmap.h \
-	libc/ipv6_util.c \
-	libc/ipv6_util.h \
-	libc/list.c \
-	libc/list.h \
-	libc/ofpbuf.c \
-	libc/ofpbuf.h \
-	libc/packets.h \
-	libc/random.c \
-	libc/random.h \
-	libc/sat-math.h \
-	libc/tag.c \
-	libc/tag.h \
-	libc/timeval.c \
-	libc/timeval.h \
-	libc/type-props.h \
-	libc/util.c \
-	libc/util.h \
-	libc/vlog-modules.def \
-	libc/vlog.c \
-	libc/vlog.h 
+	compiler.h \
+	dirs.c \
+	dirs.h \
+	dynamic-string.c \
+	dynamic-string.h \
+	fatal-signal.c \
+	fatal-signal.h \
+	fault.c \
+	fault.h \
+	hash.c \
+	hash.h \
+	hmap.c \
+	hmap.h \
+	ipv6_util.c \
+	ipv6_util.h \
+	list.c \
+	list.h \
+	ofpbuf.c \
+	ofpbuf.h \
+	packets.h \
+	random.c \
+	random.h \
+	sat-math.h \
+	tag.c \
+	tag.h \
+	timeval.c \
+	timeval.h \
+	type-props.h \
+	util.c \
+	util.h \
+	vlog-modules.def \
+	vlog.c \
+	vlog.h 
 
 AM_CPPFLAGS += -xc++ -DOFL_LOG_VLOG_CC
 
