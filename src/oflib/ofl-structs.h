@@ -41,6 +41,7 @@
 #include "ofl-actions.h"
 #include "ofl-packets.h"
 #include "../libc/hmap.h"
+#include "../libc/hash.h"
 
 
 struct ofl_exp;
@@ -253,6 +254,35 @@ struct ofl_group_desc_stats {
 };
 
 
+/* 
+* Hackish solution for a generic put match
+*
+*/
+template <typename T>
+void ofl_structs_match_put(struct ofl_match *match, uint32_t header, T value){
+    struct ofl_match_tlv *m = (struct ofl_match_tlv *) malloc(sizeof (struct ofl_match_tlv));
+    int len = sizeof(value);
+    
+    m->header = header;
+    m->value = (uint8_t*) malloc(len);
+    memcpy(m->value, &value, len);
+    hmap_insert(&match->match_fields,&m->hmap_node,hash_int(header, 0));
+    match->header.length += len + 4;
+}
+
+template <typename T>
+void ofl_structs_match_put_masked(struct ofl_match *match, uint32_t header, T value, T mask){
+    struct ofl_match_tlv *m = (struct ofl_match_tlv *) malloc(sizeof (struct ofl_match_tlv));
+    int len = sizeof(value);
+    
+    m->header = header;
+    m->value = (uint8_t*) malloc(len*2);
+    memcpy(m->value, &value, len);
+    memcpy(m->value + len, &mask, len);
+    hmap_insert(&match->match_fields,&m->hmap_node, hash_int(header, 0));
+    match->header.length += len * 2 + 4;
+}
+
 /****************************************************************************
  * Utility functions to match structure
  ****************************************************************************/
@@ -284,10 +314,10 @@ void
 ofl_structs_match_put64m(struct ofl_match *match, uint32_t header, uint64_t value, uint64_t mask);
 
 void
-ofl_structs_match_put_eth(struct ofl_match *match, uint32_t header, uint8_t value[ETH_ADDR_LEN]);
+ofl_structs_match_put_eth(struct ofl_match *match, uint32_t header,const uint8_t value[ETH_ADDR_LEN]);
 
 void
-ofl_structs_match_put_eth_m(struct ofl_match *match, uint32_t header, uint8_t value[ETH_ADDR_LEN], uint8_t mask[ETH_ADDR_LEN]);
+ofl_structs_match_put_eth_m(struct ofl_match *match, uint32_t header,const uint8_t value[ETH_ADDR_LEN],const uint8_t mask[ETH_ADDR_LEN]);
 
 void 
 ofl_structs_match_put_ipv6(struct ofl_match *match, uint32_t header, const struct in6_addr *value);

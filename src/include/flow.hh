@@ -18,13 +18,16 @@
 #ifndef FLOW_HH
 #define FLOW_HH 1
 
+#include <iostream>
+#include <string>
+#include <map>
 #include <cstring>
 #include <iosfwd>
 #include "netinet++/ethernetaddr.hh"
 #include "openflow/openflow.h"
 //#include "openflow-pack-raw.hh"
-
 #include "../oflib/ofl-structs.h"
+#include "../oflib/oxm-match.h"
 
 namespace vigil {
 
@@ -33,17 +36,40 @@ class Buffer;
 class Flow {
 public:
   struct ofl_match match;
-
+    
   /** Empty constructor
    */
   Flow();
   /** Copy constructor
    */
   Flow(const Flow& flow_);
-  /** Constructor from ofp_match
+  /** Constructor from ofl_match
    */
   Flow(const struct ofl_match *match);
+  /** Add an OXM TLV to the match
+   */
+  template<typename T> 
+  void Add_Field(std::string name, T value){
 
+    if(!fields.count(name))
+       std::cout <<"Match field: "<< name << " is not supported "<< std::endl;
+    else {
+       ofl_structs_match_put(&this->match, fields[name], value);
+    }
+  
+  }
+  /** Add a OXM TLV to the match 
+   *  with a masked value
+   */  
+  template<typename T> 
+  void Add_Field(std::string name, T value, T mask){
+    if(!fields.count(name))
+       std::cout <<"Match field: "<< name << " is not supported "<< std::endl;
+    else {
+       ofl_structs_match_put_masked(&this->match, fields[name], value, mask);
+    }
+  
+  }
   /** \brief String representation
    */
   const std::string to_string() const;

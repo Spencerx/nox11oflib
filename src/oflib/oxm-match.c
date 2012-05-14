@@ -17,7 +17,7 @@
 //#include <config.h>
 
 #include "oxm-match.h"
-
+#include "boost/assign.hpp"
 #include <netinet/icmp6.h>
 #include "../libc/hash.h"
 #include "../libc/util.h"
@@ -28,6 +28,8 @@
 
 #define LOG_MODULE VLM_oxm_match
 #include "../libc/vlog.h"
+
+using namespace boost::assign;
 
 static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(1, 5);
 
@@ -70,6 +72,21 @@ static struct oxm_field oxm_fields[N_OXM_FIELDS] = {
 
 /* Hash table of 'oxm_fields'. */
 static struct hmap all_oxm_fields = HMAP_INITIALIZER(&all_oxm_fields);
+
+/* Extern variable  declared in oxm-match.h"*/
+std::map<std::string,int>fields = map_list_of ("in_port", OXM_OF_IN_PORT)("in_phy_port",OXM_OF_IN_PHY_PORT)
+                                  ("metadata",OXM_OF_METADATA)("eth_src",OXM_OF_ETH_SRC)("eth_dst",OXM_OF_ETH_DST)
+                                  ("vlan_id", OXM_OF_VLAN_VID)("vlan_pcp",OXM_OF_VLAN_PCP)("ip_dscp",OXM_OF_IP_DSCP)
+                                  ("ip_ecn",OXM_OF_IP_ECN)("ip_proto",OXM_OF_IP_PROTO)("ipv4_src",OXM_OF_IPV4_SRC)
+                                  ("ipv4_dst",OXM_OF_IPV4_DST)("tcp_src",OXM_OF_TCP_SRC)("tcp_dst",OXM_OF_TCP_DST)
+                                  ("udp_src",OXM_OF_UDP_SRC)("udp_dst",OXM_OF_UDP_DST)("sctp_src", OXM_OF_SCTP_SRC)
+                                  ("stcp_dst", OXM_OF_SCTP_DST)("icmpv4_type",OXM_OF_ICMPV4_TYPE)("icmpv4_code",OXM_OF_ICMPV4_CODE)
+                                  ("arp_sha",OXM_OF_ARP_SHA)("arp_tha",OXM_OF_ARP_THA)("arp_spa",OXM_OF_ARP_SPA)
+                                  ("arp_tpa",OXM_OF_ARP_TPA)("ipv6_src", OXM_OF_IPV6_SRC)("ipv6_dst",OXM_OF_IPV6_DST)
+                                  ("ipv6_flow_label",OXM_OF_IPV6_FLABEL)("icmpv6_type",OXM_OF_ICMPV6_TYPE)("icmpv6_code",OXM_OF_ICMPV6_CODE)
+                                  ("ipv6_nd_target",OXM_OF_IPV6_ND_TARGET)("ipv6_nd_tll",OXM_OF_IPV6_ND_TLL)("ipv6_nd_sll",OXM_OF_IPV6_ND_SLL)
+                                  ("mpls_label",OXM_OF_MPLS_LABEL)("mpls_tc",OXM_OF_MPLS_TC);
+                                  
 
 static void
 oxm_init(void)

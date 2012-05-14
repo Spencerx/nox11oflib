@@ -31,6 +31,7 @@
 
 #include "ofl-structs.h"
 #include "../libc/hash.h"
+#include "../libc/hmap.h"
 #include "oxm-match.h"
 
 
@@ -41,7 +42,6 @@ ofl_structs_match_init(struct ofl_match *match){
     match->header.length = 0;
     match->match_fields = (struct hmap) HMAP_INITIALIZER(&match->match_fields);
 }
-
 
 void
 ofl_structs_match_put8(struct ofl_match *match, uint32_t header, uint8_t value){
@@ -150,7 +150,7 @@ ofl_structs_match_put64m(struct ofl_match *match, uint32_t header, uint64_t valu
 }
 
 void
-ofl_structs_match_put_eth(struct ofl_match *match, uint32_t header, uint8_t value[ETH_ADDR_LEN]){
+ofl_structs_match_put_eth(struct ofl_match *match, uint32_t header, const uint8_t value[ETH_ADDR_LEN]){
     struct ofl_match_tlv *m = (struct ofl_match_tlv *) malloc(sizeof (struct ofl_match_tlv));
     int len = ETH_ADDR_LEN;
     
@@ -163,7 +163,7 @@ ofl_structs_match_put_eth(struct ofl_match *match, uint32_t header, uint8_t valu
 }
 
 void
-ofl_structs_match_put_eth_m(struct ofl_match *match, uint32_t header, uint8_t value[ETH_ADDR_LEN], uint8_t mask[ETH_ADDR_LEN]){
+ofl_structs_match_put_eth_m(struct ofl_match *match, uint32_t header,const uint8_t value[ETH_ADDR_LEN],const uint8_t mask[ETH_ADDR_LEN]){
     struct ofl_match_tlv *m = (struct ofl_match_tlv *) malloc(sizeof (struct ofl_match_tlv));
     int len = ETH_ADDR_LEN;
     

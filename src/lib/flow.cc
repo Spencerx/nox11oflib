@@ -17,7 +17,7 @@
  */
 #include "flow.hh"
 
-#include <string>
+
 #include <ostream>
 #include <stdexcept>
 
@@ -49,7 +49,6 @@ Flow::Flow() {
 }
 /** Constructor from ofp_match
  */
-
 Flow::Flow(const struct ofl_match *match_) {
 	init();
 	memcpy(&match, match_, sizeof(struct ofl_match));

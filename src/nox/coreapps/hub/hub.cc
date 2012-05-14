@@ -46,6 +46,10 @@ public:
          : Component(c) { }
     
     void configure(const Configuration*) {
+        
+        Flow flow;
+        ethernetaddr mac = "10:21:12:12:12:12";
+        flow.Add_Field("tcp_dst",mac);
     }
 
     Disposition handler(const Event& e)
