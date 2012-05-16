@@ -22,6 +22,7 @@ libnoxcore_la_SOURCES = \
 	expr.cc \
 	fault.cc \
 	flow.cc \
+	flowmod.cc \
 	JSON_parser.c \
 	json_object.cc \
 	leak-checker.cc \

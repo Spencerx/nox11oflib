@@ -21,6 +21,7 @@ event.hh					\
 expr.hh						\
 fault.hh					\
 flow.hh						\
+flowmod.hh						\
 fnv_hash.hh					\
 hash_func.hh					\
 hash.hh						\
