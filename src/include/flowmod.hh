@@ -3,6 +3,7 @@
 
 #include "flow.hh"
 #include "../oflib/ofl-messages.h"
+#include "instructions.hh"
 
 namespace vigil {
 
@@ -24,6 +25,12 @@ public:
                    uint32_t out_group, uint16_t flags);
     void
     AddMatch(struct ofl_match *m);
+    
+    void
+    set_instructions_num(int inst_num);
+    
+    void 
+    AddInstructions(Instruction *inst);
 };
 
 }//namespace vigil

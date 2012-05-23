@@ -57,6 +57,19 @@ FlowMod::AddMatch(struct ofl_match *m){
     fm_msg.match = (struct ofl_match_header *)m;
 }
 
+void
+FlowMod::set_instructions_num(int inst_num){
+
+    fm_msg.instructions_num = inst_num;
+
+}
+
+void 
+FlowMod::AddInstructions(Instruction *inst){
+    
+    set_instructions_num(inst->inst_num);
+    fm_msg.instructions = inst->insts;
+}
 
 
 } // namespace vigil

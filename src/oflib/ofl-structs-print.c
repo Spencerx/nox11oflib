@@ -200,6 +200,14 @@ print_oxm_tlv(FILE *stream, struct ofl_match_tlv *f, size_t *size){
                             if (*size > 4)                                
                                 fprintf(stream, ", ");
                 }
+                else if (f->header == OXM_OF_IP_PROTO){
+                            fprintf(stream, "ip_proto=");
+                            uint8_t *v = (uint8_t *) f->value;
+                            fprintf(stream,"%d",  *v);
+                            *size -= 5;                                
+                            if (*size > 4)                                
+                                fprintf(stream, ", ");
+                }
                 else if (f->header == OXM_OF_TCP_SRC){
                             fprintf(stream, "tcp_src=%d",(uint16_t) *f->value);
                             *size -= 6;                                

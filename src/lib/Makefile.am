@@ -11,6 +11,7 @@ AM_CPPFLAGS += $(OPENFLOW_CPPFLAGS)
 AM_CPPFLAGS += -I$(top_srcdir)/src/nox
 
 libnoxcore_la_SOURCES = \
+	actions.cc \
 	async_file.cc \
 	async_io.cc \
 	auto_fd.cc \
@@ -23,6 +24,7 @@ libnoxcore_la_SOURCES = \
 	fault.cc \
 	flow.cc \
 	flowmod.cc \
+	instructions.cc\
 	JSON_parser.c \
 	json_object.cc \
 	leak-checker.cc \

@@ -74,7 +74,7 @@ static struct oxm_field oxm_fields[N_OXM_FIELDS] = {
 static struct hmap all_oxm_fields = HMAP_INITIALIZER(&all_oxm_fields);
 
 /* Extern variable  declared in oxm-match.h"*/
-std::map<std::string,int>fields = map_list_of ("in_port", OXM_OF_IN_PORT)("in_phy_port",OXM_OF_IN_PHY_PORT)
+std::map<std::string,int>fields = map_list_of ("in_port", OXM_OF_IN_PORT)("in_phy_port",OXM_OF_IN_PHY_PORT)("eth_type", OXM_OF_ETH_TYPE)
                                   ("metadata",OXM_OF_METADATA)("eth_src",OXM_OF_ETH_SRC)("eth_dst",OXM_OF_ETH_DST)
                                   ("vlan_id", OXM_OF_VLAN_VID)("vlan_pcp",OXM_OF_VLAN_PCP)("ip_dscp",OXM_OF_IP_DSCP)
                                   ("ip_ecn",OXM_OF_IP_ECN)("ip_proto",OXM_OF_IP_PROTO)("ipv4_src",OXM_OF_IPV4_SRC)
@@ -164,7 +164,7 @@ oxm_prereqs_ok(const struct oxm_field *field, const struct ofl_match *rule)
               &rule->match_fields) {
               uint16_t eth_type;
               memcpy(&eth_type, omt->value, sizeof(uint16_t));
-              if (ntohs(field->dl_type[0]) == eth_type) {
+              if (ntohs(field->dl_type[0]) == ntohs(eth_type)) {
                 return true;
               } else if (ntohs(field->dl_type[1]) && field->dl_type[1] == eth_type) {
                 return true;

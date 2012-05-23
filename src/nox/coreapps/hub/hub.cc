@@ -18,9 +18,12 @@
 #include <boost/bind.hpp>
 #include <boost/shared_array.hpp>
 #include <netinet/in.h>
+#include "datapath-join.hh"
 #include "assert.hh"
 #include "component.hh"
-#include "flow.hh"
+#include "flowmod.hh"
+#include "instructions.hh"
+#include "actions.hh"
 //#include "packet-in.hh"
 #include "ofp-msg-event.hh"
 #include "vlog.hh"
@@ -32,6 +35,7 @@
 
 namespace {
 
+using namespace std;
 using namespace vigil;
 using namespace vigil::container;
 
@@ -47,19 +51,63 @@ public:
     
     void configure(const Configuration*) {
         
+}
+
+Disposition
+handle_packet(const Event& e)
+{
+    const Ofp_msg_event& pi = assert_cast<const Ofp_msg_event&>(e);
+    struct ofl_msg_packet_in *in = (struct ofl_msg_packet_in *)**pi.msg;
+    
+    cout << "packet-in" << endl;
+    struct ofl_match_tlv *oft;
+    struct ofl_match *m= (struct ofl_match *) in->match;
+    HMAP_FOR_EACH_WITH_HASH(oft, struct ofl_match_tlv, hmap_node, hash_int(OXM_OF_IN_PORT, 0),
+          &m->match_fields) {
+        uint32_t value;
+        memcpy(&value, oft->value,sizeof(uint32_t)); 
+        cout << "Packet came from the port: "<< value << endl;
+    }
+    
+    return CONTINUE;
+
+}
+Disposition
+handle(const Event& e)
+{
+    const Datapath_join_event& dpj = assert_cast<const Datapath_join_event&>(e);
+
+        FlowMod *fm = new FlowMod();
+        /* Match Creation */
         Flow flow;
-        ethernetaddr mac = "10:21:12:12:12:12";
-        flow.Add_Field("tcp_dst",mac);
-    }
+        flow.Add_Field("in_port", 2);
+        flow.Add_Field("eth_type",(uint16_t) 0x800);
+        flow.Add_Field("ip_proto",(uint8_t) 17);
+        flow.Add_Field("udp_src", 1223);
+        fm->AddMatch(&flow.match);
+        fm->fm_msg.table_id = 0;
+        /* Actions creation */
+        Actions *act = new Actions(2);
+        act->CreateOutput(1,0);
+        //act->CreateDecTTL(OFPAT_DEC_NW_TTL);
+        uint16_t* dl_type = ( uint16_t*) malloc(2);
+        *dl_type = 0x86dd;
+        act->CreateSetField(dl_type,"eth_type");
+        /*Instruction Creation */
+        Instruction *i =  new Instruction(1);
+        i->CreateGoToTable((uint8_t) 2);
+        //Add action to an Apply Instruction
+        i->CreateApply(act);
+        fm->AddInstructions(i);
+        //send message to switch 
+        send_openflow_msg(dpj.dpid, (struct ofl_msg_header *)&fm->fm_msg, 0/*xid*/, true/*block*/);
+        return CONTINUE;        
 
-    Disposition handler(const Event& e)
-    {
-       return CONTINUE;
-    }
-
+}
     void install()
     {
-        register_handler(Ofp_msg_event::get_name(OFPT_PACKET_IN), boost::bind(&Hub::handler, this, _1));
+         register_handler(Datapath_join_event::static_get_name(), boost::bind(&Hub::handle, this, _1));
+         register_handler(Ofp_msg_event::get_name(OFPT_PACKET_IN), boost::bind(&Hub::handle_packet, this, _1));
     }
 };
 

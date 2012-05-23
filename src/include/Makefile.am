@@ -1,4 +1,5 @@
 noinst_HEADERS =				\
+actions.hh                  \
 assert.hh					\
 async_file.hh					\
 async_io.hh					\
@@ -27,6 +28,7 @@ hash_func.hh					\
 hash.hh						\
 hash_map.hh					\
 hash_set.hh					\
+instructions.hh             \
 JSON_parser.h					\
 json_object.hh					\
 leak-checker.hh					\
