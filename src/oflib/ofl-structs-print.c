@@ -161,7 +161,7 @@ ofl_structs_match_to_string(struct ofl_match_header *match, struct ofl_exp *exp)
     return str;
 }
 
-static void 
+void 
 print_oxm_tlv(FILE *stream, struct ofl_match_tlv *f, size_t *size){
                 
                 if (f->header == OXM_OF_IN_PORT){

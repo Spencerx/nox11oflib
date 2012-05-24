@@ -241,7 +241,7 @@ ofl_structs_flow_stats_pack(struct ofl_flow_stats *src, uint8_t *dst, struct ofl
     total_len = ROUND_UP(sizeof(struct ofp_flow_stats) -4 + src->match->length,8) +
                 ofl_structs_instructions_ofp_total_len(src->instructions, src->instructions_num, exp);
     
-    dst = (uint8_t *)malloc(total_len);
+    dst = (uint8_t *) malloc(total_len);
     flow_stats = (struct ofp_flow_stats*) dst;
     flow_stats->length = htons(total_len);
     
@@ -264,7 +264,6 @@ ofl_structs_flow_stats_pack(struct ofl_flow_stats *src, uint8_t *dst, struct ofl
     for (i=0; i < src->instructions_num; i++) {
         data += ofl_structs_instructions_pack(src->instructions[i], (struct ofp_instruction *) data, exp);
     }
-   
     return total_len;
 }
 
