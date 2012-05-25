@@ -729,7 +729,7 @@ ofl_structs_oxm_match_unpack(struct ofp_match* src, uint8_t* buf, size_t *len, s
          error = oxm_pull_match(b,m,m->header.length);
      }
     else m->header.length = 0;
-
+    ofpbuf_delete(b);    
     *dst = m;
     return error;
 }
