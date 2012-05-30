@@ -39,6 +39,7 @@
 #include "ofl-utils.h"
 #include "openflow/openflow.h"
 
+#include "oxm-match.h"
 #define UNUSED __attribute__((__unused__))
 
 #define LOG_MODULE ofl_msg_p

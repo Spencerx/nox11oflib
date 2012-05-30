@@ -238,6 +238,7 @@ ofl_msg_unpack_packet_in(struct ofp_header *src, uint8_t* buf, size_t *len, stru
         }
         return ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_ARGUMENT);
     }
+    
     *len -= sizeof(struct ofp_packet_in)-4;
     dp = (struct ofl_msg_packet_in *)malloc(sizeof(struct ofl_msg_packet_in));
 
@@ -247,8 +248,7 @@ ofl_msg_unpack_packet_in(struct ofp_header *src, uint8_t* buf, size_t *len, stru
     dp->table_id = sp->table_id;
     
     ptr = buf + (sizeof(struct ofp_packet_in)-4);
-    ofl_structs_match_unpack(&(sp->match),ptr,len,&(dp->match),NULL);
-    
+    ofl_structs_match_unpack(&(sp->match),ptr, len ,&(dp->match),NULL);
     ptr = buf + ROUND_UP(sizeof(struct ofp_packet_in)-4 + dp->match->length,8);
     *len -= ROUND_UP(sizeof(struct ofp_packet_in)-4 + dp->match->length,8);
     

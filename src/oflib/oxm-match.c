@@ -397,8 +397,9 @@ oxm_pull_match(struct ofpbuf *buf, struct ofl_match * match_dst, int match_len)
     }
     
     ofl_structs_match_init(match_dst);
+    int i = 0;
     while ((header = oxm_entry_ok(p, match_len)) != 0) {
-        
+        i++;
         unsigned length = OXM_LENGTH(header);
         const struct oxm_field *f;
         int error;

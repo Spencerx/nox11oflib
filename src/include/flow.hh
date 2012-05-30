@@ -68,7 +68,18 @@ public:
     else {
        ofl_structs_match_put_masked(&this->match, fields[name], value, mask);
     }
+  }
   
+  template<typename T>
+  void get_Field(std::string name, T *value ){
+     struct ofl_match_tlv *omt;
+     HMAP_FOR_EACH_WITH_HASH(omt, struct ofl_match_tlv, hmap_node, hash_int(fields[name], 0),
+          &match.match_fields){
+          memcpy(value, omt->value, sizeof(T));
+          return;   
+     }
+     /* Field is not present in the packet */
+     *value = -1;
   }
   /** \brief String representation
    */
