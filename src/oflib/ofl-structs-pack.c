@@ -84,6 +84,7 @@ ofl_structs_instructions_ofp_total_len(struct ofl_instruction_header **instructi
     size_t sum;
     OFL_UTILS_SUM_ARR_FUN2(sum, instructions, instructions_num,
             ofl_structs_instructions_ofp_len, exp);
+    
     return sum;
 }
 

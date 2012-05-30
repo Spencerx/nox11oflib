@@ -12,7 +12,9 @@ public:
     struct ofl_instruction_header **insts;
     static int inst_num;
 
-    Instruction(int instructions_num);
+    Instruction();
+    
+    ~Instruction();
 
     void
     CreateApply(Actions *actions);

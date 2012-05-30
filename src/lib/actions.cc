@@ -5,17 +5,18 @@ namespace vigil {
 
 static Vlog_module log("actions");
 
-int Actions::act_num = 0;
+int Actions::act_num;
 
-Actions::Actions(int action_num){
-
-    acts = (struct ofl_action_header**) xmalloc(sizeof(struct ofl_action_header *) * (action_num));
+Actions::Actions(){
+    act_num = 0;
+    acts = (struct ofl_action_header**) xmalloc(sizeof(struct ofl_action_header *));
 
 }
 
 void
 Actions::CreateOutput(uint32_t port, uint16_t max_len){
     
+    acts = (struct ofl_action_header**) xrealloc(acts, sizeof(struct ofl_action_header *) * act_num);
     struct ofl_action_output *a = (struct ofl_action_output*) xmalloc(sizeof(struct ofl_action_output));
     a->port = port;
     a->max_len = max_len;
@@ -31,6 +32,7 @@ Actions::CreateCopyTTL(enum ofp_action_type type){
 
     }
     else {
+        acts = (struct ofl_action_header**) xrealloc(acts, sizeof(struct ofl_action_header *) * act_num);
         acts[act_num]->type = type;
         struct ofl_action_header *a = (struct ofl_action_header*) xmalloc(sizeof(struct ofl_action_header));
         acts[act_num] = (struct ofl_action_header*) a;
@@ -45,6 +47,7 @@ Actions::CreateDecTTL(enum ofp_action_type type){
 
     }
     else {
+        acts = (struct ofl_action_header**) xrealloc(acts, sizeof(struct ofl_action_header *) * act_num);
         struct ofl_action_header *a = (struct ofl_action_header*) xmalloc(sizeof(struct ofl_action_header));
         acts[act_num] = (struct ofl_action_header*) a;
         acts[act_num]->type = type;
@@ -58,7 +61,8 @@ Actions::CreatePushAction(enum ofp_action_type type){
     if (type != OFPAT_PUSH_MPLS && type != OFPAT_PUSH_VLAN ){
 
     }
-    else {    
+    else {
+        acts = (struct ofl_action_header**) xrealloc(acts, sizeof(struct ofl_action_header *) * act_num);    
         acts[act_num]->type = type;
         struct ofl_action_header *a = (struct ofl_action_header*) xmalloc(sizeof(struct ofl_action_header));
         acts[act_num] = (struct ofl_action_header*) a;
@@ -68,6 +72,7 @@ Actions::CreatePushAction(enum ofp_action_type type){
     
 void 
 Actions::CreatePopVlan(){
+    acts = (struct ofl_action_header**) xrealloc(acts, sizeof(struct ofl_action_header *) * act_num);
     struct ofl_action_header *a = (struct ofl_action_header*) xmalloc(sizeof(struct ofl_action_header));
     acts[act_num] = (struct ofl_action_header*) a;
     acts[act_num]->type = OFPAT_POP_VLAN;
@@ -76,7 +81,7 @@ Actions::CreatePopVlan(){
     
 void 
 Actions::CreatePopMpls(uint16_t ethertype){
-    
+    acts = (struct ofl_action_header**) xrealloc(acts, sizeof(struct ofl_action_header *) * act_num);
     struct ofl_action_pop_mpls *a = (struct ofl_action_pop_mpls*) xmalloc(sizeof(struct ofl_action_pop_mpls));
     a->ethertype = ethertype;
     acts[act_num] = (struct ofl_action_header*) a;
@@ -86,6 +91,7 @@ Actions::CreatePopMpls(uint16_t ethertype){
     
 void 
 Actions::CreateSetNwTTL(uint8_t nw_ttl){
+    acts = (struct ofl_action_header**) xrealloc(acts, sizeof(struct ofl_action_header *) * act_num);
     struct ofl_action_set_nw_ttl *a = (struct ofl_action_set_nw_ttl*) xmalloc(sizeof(struct ofl_action_set_nw_ttl));
     a->nw_ttl = nw_ttl;
     acts[act_num] = (struct ofl_action_header*) a;
@@ -95,6 +101,7 @@ Actions::CreateSetNwTTL(uint8_t nw_ttl){
 
 void 
 Actions::CreateSetMplsTTL(uint8_t mpls_ttl){
+    acts = (struct ofl_action_header**) xrealloc(acts, sizeof(struct ofl_action_header *) * act_num);
     struct ofl_action_mpls_ttl *a = (struct ofl_action_mpls_ttl*) xmalloc(sizeof(struct ofl_action_mpls_ttl));
     a->mpls_ttl = mpls_ttl;
     acts[act_num] = (struct ofl_action_header*) a;
@@ -104,6 +111,7 @@ Actions::CreateSetMplsTTL(uint8_t mpls_ttl){
     
 void 
 Actions::CreateSetQueue(uint32_t queue_id){
+    acts = (struct ofl_action_header**) xrealloc(acts, sizeof(struct ofl_action_header *) * act_num);
     struct ofl_action_set_queue *a = (struct ofl_action_set_queue*) xmalloc(sizeof(struct ofl_action_set_queue));
     a->queue_id = queue_id;
     acts[act_num] = (struct ofl_action_header*) a;
@@ -113,6 +121,7 @@ Actions::CreateSetQueue(uint32_t queue_id){
     
 void 
 Actions::CreateGroupAction(uint32_t group_id){
+    acts = (struct ofl_action_header**) xrealloc(acts, sizeof(struct ofl_action_header *) * act_num);
     struct ofl_action_group *a = (struct ofl_action_group*) xmalloc(sizeof(struct ofl_action_group));
     a->group_id = group_id;
     acts[act_num] = (struct ofl_action_header*) a;

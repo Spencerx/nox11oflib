@@ -14,7 +14,7 @@ public:
     struct ofl_action_header **acts;
     static int act_num;
 
-    Actions(int action_num);
+    Actions();
 
     void
     CreateOutput(uint32_t port, uint16_t max_len);

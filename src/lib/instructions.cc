@@ -1,18 +1,29 @@
 #include "instructions.hh"
 #include "vlog.hh"
+#include "iostream"
+using namespace std;
 
 namespace vigil {
 
 static Vlog_module log("instructions");
 
-int Instruction::inst_num = 0;
+int Instruction::inst_num;
 
-Instruction::Instruction(int instructions_num){
-    insts = (struct ofl_instruction_header **) xmalloc(sizeof(struct ofl_instruction_header *) * instructions_num);
+Instruction::Instruction(){
+    insts = (struct ofl_instruction_header **) xmalloc(sizeof(struct ofl_instruction_header*));
+    inst_num = 0;     
+}
+
+Instruction::~Instruction(){
+
+    for(int i = 0; i < inst_num; i++ ) 
+        free(insts[i]);
 }
 
 void
 Instruction::CreateApply(Actions *actions){
+    
+    insts = (struct ofl_instruction_header **) xrealloc(insts, sizeof(struct ofl_instruction_header**) * inst_num );
     struct ofl_instruction_actions *i = (struct ofl_instruction_actions*) xmalloc(sizeof(struct ofl_instruction_actions));
     i->header.type = OFPIT_APPLY_ACTIONS;
     i->actions = NULL;
@@ -24,6 +35,8 @@ Instruction::CreateApply(Actions *actions){
     
 void
 Instruction::CreateGoToTable(uint8_t table_id){
+
+    insts = (struct ofl_instruction_header **) xrealloc(insts, sizeof(struct ofl_instruction_header**) * inst_num );
     struct ofl_instruction_goto_table *i = (struct ofl_instruction_goto_table*) xmalloc(sizeof(struct ofl_instruction_goto_table));
     i->header.type = OFPIT_GOTO_TABLE;
     i->table_id = table_id;
@@ -33,6 +46,7 @@ Instruction::CreateGoToTable(uint8_t table_id){
     
 void 
 Instruction::CreateWrite(Actions *actions){
+    insts = (struct ofl_instruction_header **) xrealloc(insts, sizeof(struct ofl_instruction_header**) * inst_num );
     struct ofl_instruction_actions *i = (struct ofl_instruction_actions*) xmalloc(sizeof(struct ofl_instruction_actions));
     i->header.type = OFPIT_WRITE_ACTIONS;
     i->actions = NULL;
@@ -44,6 +58,7 @@ Instruction::CreateWrite(Actions *actions){
     
 void 
 Instruction::CreateWriteMetadata(uint64_t metadata){
+    insts = (struct ofl_instruction_header **) xrealloc(insts, sizeof(struct ofl_instruction_header**) * inst_num );
     struct ofl_instruction_write_metadata *i = (struct ofl_instruction_write_metadata*) xmalloc(sizeof(struct ofl_instruction_write_metadata));
     i->header.type = OFPIT_WRITE_METADATA;  
     i->metadata = metadata;
@@ -54,6 +69,7 @@ Instruction::CreateWriteMetadata(uint64_t metadata){
 
 void 
 Instruction::CreateWriteMetadata(uint64_t metadata, uint64_t metadata_mask){
+    insts = (struct ofl_instruction_header **) xrealloc(insts, sizeof(struct ofl_instruction_header**) * inst_num );
     struct ofl_instruction_write_metadata *i = (struct ofl_instruction_write_metadata*) xmalloc(sizeof(struct ofl_instruction_write_metadata));
     i->header.type = OFPIT_WRITE_METADATA;  
     i->metadata = metadata;
@@ -65,10 +81,11 @@ Instruction::CreateWriteMetadata(uint64_t metadata, uint64_t metadata_mask){
     
 void 
 Instruction::CreateClearActions(){
+    inst_num++;
+    insts = (struct ofl_instruction_header **) xrealloc(insts, sizeof(struct ofl_instruction_header**) * inst_num );
     struct ofl_instruction_header *i = (struct ofl_instruction_header*) xmalloc(sizeof(struct ofl_instruction_header));
     i->type = OFPIT_CLEAR_ACTIONS;
     insts[inst_num] = (struct ofl_instruction_header *)i;
-    inst_num++;
 }
 
 void 
