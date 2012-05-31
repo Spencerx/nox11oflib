@@ -24,7 +24,19 @@ Actions::CreateOutput(uint32_t port, uint16_t max_len){
     acts[act_num]->type = OFPAT_OUTPUT;
     act_num++;
 }
+   
+void
+Actions::CreateOutput(uint32_t port){
     
+    acts = (struct ofl_action_header**) xrealloc(acts, sizeof(struct ofl_action_header *) * act_num);
+    struct ofl_action_output *a = (struct ofl_action_output*) xmalloc(sizeof(struct ofl_action_output));
+    a->port = port;
+    a->max_len = 0;
+    acts[act_num] = (struct ofl_action_header*) a;
+    acts[act_num]->type = OFPAT_OUTPUT;
+    act_num++;
+} 
+
 void 
 Actions::CreateCopyTTL(enum ofp_action_type type){
 

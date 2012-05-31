@@ -19,6 +19,9 @@ public:
     void
     CreateOutput(uint32_t port, uint16_t max_len);
     
+    void
+    CreateOutput(uint32_t port);
+    
     template<typename T>
     void
     CreateSetField(T* value, std::string field){
