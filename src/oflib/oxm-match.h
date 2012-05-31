@@ -244,7 +244,7 @@
 #define OXM_OF_IPV4_TTL OXM_HEADER (0x0002, 81, 1)
 
 /*Defined in oxm-match.c*/ 
-extern std::map<std::string,int> fields;
+extern std::map<std::string,std::pair<int,int> > fields;
 
 int 
 oxm_pull_match(struct ofpbuf * buf, struct ofl_match *match_dst, int match_len);

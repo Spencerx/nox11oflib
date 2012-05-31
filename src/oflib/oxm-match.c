@@ -73,19 +73,30 @@ static struct oxm_field oxm_fields[N_OXM_FIELDS] = {
 /* Hash table of 'oxm_fields'. */
 static struct hmap all_oxm_fields = HMAP_INITIALIZER(&all_oxm_fields);
 
+
 /* Extern variable  declared in oxm-match.h"*/
-std::map<std::string,int>fields = map_list_of ("in_port", OXM_OF_IN_PORT)("in_phy_port",OXM_OF_IN_PHY_PORT)("eth_type", OXM_OF_ETH_TYPE)
-                                  ("metadata",OXM_OF_METADATA)("eth_src",OXM_OF_ETH_SRC)("eth_dst",OXM_OF_ETH_DST)
-                                  ("vlan_id", OXM_OF_VLAN_VID)("vlan_pcp",OXM_OF_VLAN_PCP)("ip_dscp",OXM_OF_IP_DSCP)
-                                  ("ip_ecn",OXM_OF_IP_ECN)("ip_proto",OXM_OF_IP_PROTO)("ipv4_src",OXM_OF_IPV4_SRC)
-                                  ("ipv4_dst",OXM_OF_IPV4_DST)("tcp_src",OXM_OF_TCP_SRC)("tcp_dst",OXM_OF_TCP_DST)
-                                  ("udp_src",OXM_OF_UDP_SRC)("udp_dst",OXM_OF_UDP_DST)("sctp_src", OXM_OF_SCTP_SRC)
-                                  ("stcp_dst", OXM_OF_SCTP_DST)("icmpv4_type",OXM_OF_ICMPV4_TYPE)("icmpv4_code",OXM_OF_ICMPV4_CODE)
-                                  ("arp_sha",OXM_OF_ARP_SHA)("arp_tha",OXM_OF_ARP_THA)("arp_spa",OXM_OF_ARP_SPA)
-                                  ("arp_tpa",OXM_OF_ARP_TPA)("ipv6_src", OXM_OF_IPV6_SRC)("ipv6_dst",OXM_OF_IPV6_DST)
-                                  ("ipv6_flow_label",OXM_OF_IPV6_FLABEL)("icmpv6_type",OXM_OF_ICMPV6_TYPE)("icmpv6_code",OXM_OF_ICMPV6_CODE)
-                                  ("ipv6_nd_target",OXM_OF_IPV6_ND_TARGET)("ipv6_nd_tll",OXM_OF_IPV6_ND_TLL)("ipv6_nd_sll",OXM_OF_IPV6_ND_SLL)
-                                  ("mpls_label",OXM_OF_MPLS_LABEL)("mpls_tc",OXM_OF_MPLS_TC);
+std::map<std::string,std::pair<int,int> >fields = map_list_of ("in_port", std::make_pair(OXM_OF_IN_PORT, 4))
+                                  ("in_phy_port",std::make_pair(OXM_OF_IN_PHY_PORT,4))("eth_type", std::make_pair(OXM_OF_ETH_TYPE,2))
+                                  ("metadata",std::make_pair(OXM_OF_METADATA,8)) ("eth_src",std::make_pair(OXM_OF_ETH_SRC,6))
+                                  ("eth_dst",std::make_pair(OXM_OF_ETH_DST,6)) ("vlan_id", std::make_pair(OXM_OF_VLAN_VID,2))
+                                  ("vlan_pcp",std::make_pair(OXM_OF_VLAN_PCP,1))("ip_dscp",std::make_pair(OXM_OF_IP_DSCP,1))
+                                  ("ip_ecn",std::make_pair(OXM_OF_IP_ECN,1))("ip_proto",std::make_pair(OXM_OF_IP_PROTO,1))
+                                  ("ipv4_src",std::make_pair(OXM_OF_IPV4_SRC,4))
+                                  ("ipv4_dst",std::make_pair(OXM_OF_IPV4_DST,4))("tcp_src",std::make_pair(OXM_OF_TCP_SRC,2))
+                                  ("tcp_dst",std::make_pair(OXM_OF_TCP_DST,2))
+                                  ("udp_src",std::make_pair(OXM_OF_UDP_SRC,2))("udp_dst",std::make_pair(OXM_OF_UDP_DST,2))
+                                  ("sctp_src", std::make_pair(OXM_OF_SCTP_SRC,2))
+                                  ("stcp_dst", std::make_pair(OXM_OF_SCTP_DST,2))("icmpv4_type",std::make_pair(OXM_OF_ICMPV4_TYPE,1))
+                                  ("icmpv4_code",std::make_pair(OXM_OF_ICMPV4_CODE,1))
+                                  ("arp_sha",std::make_pair(OXM_OF_ARP_SHA,6))("arp_tha",std::make_pair(OXM_OF_ARP_THA,6))
+                                  ("arp_spa",std::make_pair(OXM_OF_ARP_SPA,4))
+                                  ("arp_tpa",std::make_pair(OXM_OF_ARP_TPA,4))("ipv6_src", std::make_pair(OXM_OF_IPV6_SRC,16))
+                                  ("ipv6_dst",std::make_pair(OXM_OF_IPV6_DST,16))
+                                  ("ipv6_flow_label",std::make_pair(OXM_OF_IPV6_FLABEL,4))("icmpv6_type",std::make_pair(OXM_OF_ICMPV6_TYPE,1))
+                                  ("icmpv6_code",std::make_pair(OXM_OF_ICMPV6_CODE,1))
+                                  ("ipv6_nd_target",std::make_pair(OXM_OF_IPV6_ND_TARGET,16))("ipv6_nd_tll",std::make_pair(OXM_OF_IPV6_ND_TLL,16))
+                                  ("ipv6_nd_sll",std::make_pair(OXM_OF_IPV6_ND_SLL,16))
+                                  ("mpls_label",std::make_pair(OXM_OF_MPLS_LABEL,4))("mpls_tc",std::make_pair(OXM_OF_MPLS_TC,1));
                                   
 
 static void

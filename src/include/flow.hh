@@ -54,10 +54,10 @@ public:
     if(!fields.count(name))
        std::cout <<"Match field: "<< name << " is not supported "<< std::endl;
     else {
-       ofl_structs_match_put(&this->match, fields[name], value);
+       ofl_structs_match_put(&this->match, fields[name].first, value);
     }
-  
   }
+  
   /** Add a OXM TLV to the match 
    *  with a masked value
    */  
@@ -66,14 +66,14 @@ public:
     if(!fields.count(name))
        std::cout <<"Match field: "<< name << " is not supported "<< std::endl;
     else {
-       ofl_structs_match_put_masked(&this->match, fields[name], value, mask);
+       ofl_structs_match_put_masked(&this->match, fields[name].first, value, mask);
     }
   }
   
   template<typename T>
   void get_Field(std::string name, T *value ){
      struct ofl_match_tlv *omt;
-     HMAP_FOR_EACH_WITH_HASH(omt, struct ofl_match_tlv, hmap_node, hash_int(fields[name], 0),
+     HMAP_FOR_EACH_WITH_HASH(omt, struct ofl_match_tlv, hmap_node, hash_int(fields[name].first, 0),
           &match.match_fields){
           memcpy(value, omt->value, sizeof(T));
           return;   
@@ -93,6 +93,24 @@ private:
 bool operator==(const Flow& lhs, const Flow& rhs);
 bool operator!=(const Flow& lhs, const Flow& rhs);
 std::ostream& operator<<(std::ostream&, const Flow&);
+
+template<> inline
+void Flow::Add_Field(std::string name, std::string value){
+
+    if(!fields.count(name))
+       std::cout <<"Match field: "<< name << " is not supported "<< std::endl;
+    else {
+        if(fields[name].first ==  ETH_ADDR_LEN){
+            ethernetaddr addr = ethernetaddr(value);
+            ofl_structs_match_put(&this->match, fields[name].first, addr.octet);
+        }
+        else {
+            struct in6_addr addr;
+            inet_pton(AF_INET6, value.c_str(), &addr); 
+            ofl_structs_match_put(&this->match, fields[name].first, addr);
+        }
+    }
+}
 
 } // namespace vigil
 
