@@ -95,7 +95,7 @@ bool operator!=(const Flow& lhs, const Flow& rhs);
 std::ostream& operator<<(std::ostream&, const Flow&);
 
 template<> inline
-void Flow::Add_Field(std::string name, std::string value){
+void Flow::Add_Field<std::string>(std::string name, std::string value){
 
     if(!fields.count(name))
        std::cout <<"Match field: "<< name << " is not supported "<< std::endl;
