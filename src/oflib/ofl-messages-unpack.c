@@ -238,10 +238,8 @@ ofl_msg_unpack_packet_in(struct ofp_header *src, uint8_t* buf, size_t *len, stru
         }
         return ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_ARGUMENT);
     }
-    
-    *len -= sizeof(struct ofp_packet_in)-4;
+    *len -= sizeof(struct ofp_packet_in) - sizeof(struct ofp_match);
     dp = (struct ofl_msg_packet_in *)malloc(sizeof(struct ofl_msg_packet_in));
-
     dp->buffer_id = ntohl(sp->buffer_id);
     dp->total_len = ntohs(sp->total_len);
     dp->reason = (enum ofp_packet_in_reason)sp->reason;
@@ -249,10 +247,11 @@ ofl_msg_unpack_packet_in(struct ofp_header *src, uint8_t* buf, size_t *len, stru
     
     ptr = buf + (sizeof(struct ofp_packet_in)-4);
     ofl_structs_match_unpack(&(sp->match),ptr, len ,&(dp->match),NULL);
-    ptr = buf + ROUND_UP(sizeof(struct ofp_packet_in)-4 + dp->match->length,8);
-    *len -= ROUND_UP(sizeof(struct ofp_packet_in)-4 + dp->match->length,8);
     
-    dp->data_length = *len; 
+    ptr = buf + ROUND_UP(sizeof(struct ofp_packet_in)-4 + dp->match->length,8) + 2;
+    /* Minus padding bytes */
+    *len -= 2;
+    dp->data_length = *len;
     dp->data = *len > 0 ? (uint8_t *)memcpy(malloc(*len), ptr, *len) : NULL;
     *len = 0;
 

@@ -18,15 +18,13 @@
 #include <boost/bind.hpp>
 #include <boost/shared_array.hpp>
 #include <netinet/in.h>
-#include "datapath-join.hh"
 #include "assert.hh"
 #include "component.hh"
-#include "flowmod.hh"
-#include "instructions.hh"
-#include "actions.hh"
+#include "flow.hh"
 //#include "packet-in.hh"
 #include "ofp-msg-event.hh"
 #include "vlog.hh"
+#include "flowmod.hh"
 
 #include "netinet++/ethernet.hh"
 
@@ -35,7 +33,6 @@
 
 namespace {
 
-using namespace std;
 using namespace vigil;
 using namespace vigil::container;
 
@@ -50,67 +47,54 @@ public:
          : Component(c) { }
     
     void configure(const Configuration*) {
-        
-}
-
-Disposition
-handle_packet(const Event& e)
-{
-    const Ofp_msg_event& pi = assert_cast<const Ofp_msg_event&>(e);
-    struct ofl_msg_packet_in *in = (struct ofl_msg_packet_in *)**pi.msg;
-    
-    cout << "packet-in" << endl;
-    struct ofl_match_tlv *oft;
-    struct ofl_match *m= (struct ofl_match *) in->match;
-    HMAP_FOR_EACH_WITH_HASH(oft, struct ofl_match_tlv, hmap_node, hash_int(OXM_OF_IN_PORT, 0),
-          &m->match_fields) {
-        uint32_t value;
-        memcpy(&value, oft->value,sizeof(uint32_t)); 
-        cout << "Packet came from the port: "<< value << endl;
     }
-    
-    return CONTINUE;
 
-}
-Disposition
-handle(const Event& e)
-{
-    const Datapath_join_event& dpj = assert_cast<const Datapath_join_event&>(e);
+    Disposition handler(const Event& e)
+    {
+        const Ofp_msg_event& pi = assert_cast<const Ofp_msg_event&>(e);
+        struct ofl_msg_packet_in *in = (struct ofl_msg_packet_in *)**pi.msg;
 
-        FlowMod *fm = new FlowMod();
-        /* Match Creation */
-        Flow flow;
-        flow.Add_Field("in_port", 2);
-        flow.Add_Field("eth_type",(uint16_t) 0x800);
-        flow.Add_Field("ip_proto",(uint8_t) 17);
-        flow.Add_Field("udp_src", 1223);
-        fm->AddMatch(&flow.match);
-        fm->fm_msg.table_id = 0;
-        /* Actions creation */
-        Actions *act = new Actions(2);
-        act->CreateOutput(1,0);
-        //act->CreateDecTTL(OFPAT_DEC_NW_TTL);
-        uint16_t* dl_type = ( uint16_t*) malloc(2);
-        *dl_type = 0x86dd;
-        act->CreateSetField(dl_type,"eth_type");
-        /*Instruction Creation */
-        Instruction *i =  new Instruction(1);
-        i->CreateGoToTable((uint8_t) 2);
-        //Add action to an Apply Instruction
-        i->CreateApply(act);
-        fm->AddInstructions(i);
-        //send message to switch 
-        send_openflow_msg(dpj.dpid, (struct ofl_msg_header *)&fm->fm_msg, 0/*xid*/, true/*block*/);
-        return CONTINUE;        
+       Flow *flow = new Flow((struct ofl_match*) in->match);
 
-}
+        /* drop all LLDP packets */
+        uint16_t dl_type;
+        flow->get_Field("eth_type",&dl_type);
+        if (dl_type == ethernet::LLDP){
+            return CONTINUE;
+        }
+        Flow fl;
+        Actions *act = new Actions();
+        act->CreateOutput(OFPP_FLOOD);
+        Instruction *inst = new Instruction();
+        inst->CreateApply(act);
+        FlowMod *mod = new FlowMod(0x00ULL,0x00ULL,0,OFPFC_ADD, 5, 5, OFP_DEFAULT_PRIORITY, 
+                                  in->buffer_id, OFPP_ANY, OFPG_ANY,0x00000);
+        mod->AddInstructions(inst);
+        mod->AddMatch(&fl.match);
+        send_openflow_msg(pi.dpid, (struct ofl_msg_header *)&mod->fm_msg, 0/*xid*/, true/*block*/);
+
+        if (in->buffer_id == UINT32_MAX) {
+            if (in->total_len == in->data_length) {
+                uint32_t in_port;
+                flow->get_Field("in_port", &in_port);
+                send_openflow_pkt(pi.dpid, Array_buffer(in->data, in->data_length), in_port, OFPP_FLOOD, true/*block*/);
+            } else {
+                /* Control path didn't buffer the packet and didn't send us
+                 * the whole thing--what gives? */
+                lg.dbg("total_len=%zu data_len=%zu\n", in->total_len, in->data_length);
+            }
+        }
+
+        return CONTINUE;
+    }
+
     void install()
     {
-         register_handler(Datapath_join_event::static_get_name(), boost::bind(&Hub::handle, this, _1));
-         register_handler(Ofp_msg_event::get_name(OFPT_PACKET_IN), boost::bind(&Hub::handle_packet, this, _1));
+        register_handler(Ofp_msg_event::get_name(OFPT_PACKET_IN), boost::bind(&Hub::handler, this, _1));
     }
 };
 
 REGISTER_COMPONENT(container::Simple_component_factory<Hub>, Hub);
 
 } // unnamed namespace
+

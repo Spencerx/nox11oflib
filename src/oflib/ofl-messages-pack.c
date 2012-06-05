@@ -39,7 +39,6 @@
 #include "ofl-utils.h"
 #include "openflow/openflow.h"
 
-#include "oxm-match.h"
 #define UNUSED __attribute__((__unused__))
 
 #define LOG_MODULE ofl_msg_p
@@ -155,9 +154,8 @@ ofl_msg_pack_packet_in(struct ofl_msg_packet_in *msg, uint8_t **buf, size_t *buf
     size_t match_len;
 
     
-    *buf_len = ROUND_UP((sizeof(struct ofp_packet_in)-4) + msg->match->length,8) + msg->data_length + 2;
+    *buf_len = sizeof(struct ofp_packet_in) + ROUND_UP(msg->match->length - 4 ,8) + msg->data_length + 2;
     *buf     = (uint8_t *)malloc(*buf_len);
-   
     packet_in = (struct ofp_packet_in *)(*buf);
     packet_in->buffer_id   = htonl(msg->buffer_id);
     packet_in->total_len   = htons(msg->total_len);
@@ -165,17 +163,17 @@ ofl_msg_pack_packet_in(struct ofl_msg_packet_in *msg, uint8_t **buf, size_t *buf
     packet_in->table_id    =       msg->table_id;
 
     ptr = (*buf) + (sizeof(struct ofp_packet_in) - 4);
-
     match_len = ofl_structs_match_pack(msg->match,&(packet_in->match),ptr,NULL);
     ptr = (*buf) + ROUND_UP((sizeof(struct ofp_packet_in)-4) + msg->match->length,8);
     /*padding bytes*/
-    
+
     memset(ptr,0,2); 
     /* Ethernet frame */
     if (msg->data_length > 0) {
-       memcpy(ptr , msg->data, msg->data_length);
+        memcpy(ptr , msg->data, msg->data_length);
+        
     }
-   
+    
     return 0;
 }
 
@@ -518,16 +516,16 @@ static int
 ofl_msg_pack_stats_reply_flow(struct ofl_msg_stats_reply_flow *msg, uint8_t **buf, size_t *buf_len, struct ofl_exp *exp) {
     struct ofp_stats_reply *resp;
     size_t i;
-    uint8_t *data;
+    uint8_t * data;
 
     *buf_len = sizeof(struct ofp_stats_reply) + ofl_structs_flow_stats_ofp_total_len(msg->stats, msg->stats_num, exp);
     *buf     = (uint8_t *)malloc(*buf_len);
     resp = (struct ofp_stats_reply *)(*buf);
-    data = (uint8_t *)resp->body;
+    int len = 0;
+    data = (uint8_t*) resp->body; 
     for (i=0; i<msg->stats_num; i++) {
-        data += ofl_structs_flow_stats_pack(msg->stats[i], data, exp);        
+        data += ofl_structs_flow_stats_pack(msg->stats[i], data, exp);
     }
-    
     return 0;
 }
 

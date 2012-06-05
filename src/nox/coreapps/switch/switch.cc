@@ -31,6 +31,7 @@
 #include "hash_set.hh"
 #include "ofp-msg-event.hh"
 #include "vlog.hh"
+#include "flowmod.hh"
 
 #include "netinet++/ethernetaddr.hh"
 #include "netinet++/ethernet.hh"
@@ -125,7 +126,83 @@ Switch::install() {
 Disposition
 Switch::handle(const Event& e)
 {
-   
+    const Ofp_msg_event& pi = assert_cast<const Ofp_msg_event&>(e);
+
+    struct ofl_msg_packet_in *in = (struct ofl_msg_packet_in *)**pi.msg;
+    Flow *flow = new Flow((struct ofl_match*) in->match);
+
+    /* drop all LLDP packets */
+        uint16_t dl_type;
+        flow->get_Field("eth_type",&dl_type);
+        if (dl_type == ethernet::LLDP){
+            return CONTINUE;
+        }
+       
+    uint32_t in_port;
+    flow->get_Field("in_port", &in_port);        
+
+    /* Learn the source. */
+    uint8_t eth_src[6];
+    flow->get_Field("eth_src", eth_src);
+    ethernetaddr dl_src(dl_src);
+    if (!dl_src.is_multicast()) {
+        Mac_source src(pi.dpid, dl_src);
+        Source_table::iterator i = sources.insert(src).first;
+
+        if (i->port != in_port) {
+            i->port = in_port;
+            VLOG_DBG(log, "learned that "EA_FMT" is on datapath %s port %d",
+                     EA_ARGS(&dl_src), pi.dpid.string().c_str(),
+                     (int) in_port);
+        }
+    } else {
+        VLOG_DBG(log, "multicast packet source "EA_FMT, EA_ARGS(&dl_src));
+    }
+
+    /* Figure out the destination. */
+    int out_port = -1;        /* Flood by default. */
+    ethernetaddr dl_dst(eth_src);
+    if (!dl_dst.is_multicast()) {
+        Mac_source dst(pi.dpid, dl_dst);
+        Source_table::iterator i(sources.find(dst));
+        if (i != sources.end()) {
+            out_port = i->port;
+        }
+    }
+
+    /* Set up a flow if the output port is known. */
+    if (setup_flows && out_port != -1) {
+
+        Flow  f;
+	    f.Add_Field("in_port", in_port);
+    	Actions *acts = new Actions();
+        acts->CreateOutput(out_port);
+        Instruction *inst =  new Instruction();
+        inst->CreateApply(acts);
+        FlowMod *mod = new FlowMod(0x00ULL,0x00ULL, 0,OFPFC_ADD, 5, OFP_FLOW_PERMANENT, OFP_DEFAULT_PRIORITY,in->buffer_id, 
+                                    OFPP_ANY, OFPG_ANY, ofd_flow_mod_flags());
+        mod->AddMatch(&f.match);
+	    mod->AddInstructions(inst);
+        
+        send_openflow_msg(pi.dpid, (struct ofl_msg_header *)&mod->fm_msg, 0/*xid*/, true/*block*/);
+    }
+
+    /* Send out packet if necessary. */
+    if (!setup_flows || out_port == -1 || in->buffer_id == UINT32_MAX) {
+
+        if (in->buffer_id == UINT32_MAX) {
+            if (in->total_len != in->data_length) {
+                /* Control path didn't buffer the packet and didn't send us
+                 * the whole thing--what gives? */
+                VLOG_DBG(log, "total_len=%"PRIu16" data_len=%zu\n",
+                        in->total_len, in->data_length);
+                return CONTINUE;
+            }
+            send_openflow_pkt(pi.dpid, Nonowning_buffer(in->data, in->data_length), in_port, out_port == -1 ? OFPP_FLOOD : out_port, true/*block*/);
+        } else {
+            send_openflow_pkt(pi.dpid, in->buffer_id, in_port, out_port == -1 ? OFPP_FLOOD : out_port, true/*block*/);
+        }
+    }
     return CONTINUE;
 }
 

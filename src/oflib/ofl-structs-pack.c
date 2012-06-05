@@ -33,7 +33,7 @@
 #include <string.h>
 #include <netinet/in.h>
 
-#include "../include/openflow/openflow.h"
+#include "openflow/openflow.h"
 #include "oxm-match.h"
 #include "ofl.h"
 #include "ofl-actions.h"
@@ -84,7 +84,6 @@ ofl_structs_instructions_ofp_total_len(struct ofl_instruction_header **instructi
     size_t sum;
     OFL_UTILS_SUM_ARR_FUN2(sum, instructions, instructions_num,
             ofl_structs_instructions_ofp_len, exp);
-    
     return sum;
 }
 
@@ -243,8 +242,8 @@ ofl_structs_flow_stats_pack(struct ofl_flow_stats *src, uint8_t *dst, struct ofl
                 ofl_structs_instructions_ofp_total_len(src->instructions, src->instructions_num, exp);
     
     flow_stats = (struct ofp_flow_stats*) dst;
+
     flow_stats->length = htons(total_len);
-    
     flow_stats->table_id = src->table_id;
     flow_stats->pad = 0x00;
     flow_stats->duration_sec = htonl(src->duration_sec);
@@ -256,14 +255,15 @@ ofl_structs_flow_stats_pack(struct ofl_flow_stats *src, uint8_t *dst, struct ofl
     flow_stats->cookie = hton64(src->cookie);
     flow_stats->packet_count = hton64(src->packet_count);
     flow_stats->byte_count = hton64(src->byte_count);
-    
     data = (dst) + sizeof(struct ofp_flow_stats) - 4;
+    
     ofl_structs_match_pack(src->match, &(flow_stats->match), data, exp);
     data = (dst) + ROUND_UP(sizeof(struct ofp_flow_stats) -4 + src->match->length, 8);  
     
     for (i=0; i < src->instructions_num; i++) {
         data += ofl_structs_instructions_pack(src->instructions[i], (struct ofp_instruction *) data, exp);
     }
+    struct ofp_flow_stats *f = (struct ofp_flow_stats *) dst;
     return total_len;
 }
 
@@ -548,12 +548,10 @@ ofl_structs_match_pack(struct ofl_match_header *src, struct ofp_match *dst, uint
             struct ofl_match *m = (struct ofl_match *)src;
             struct ofpbuf *b = ofpbuf_new(0);
             int oxm_len;
-            
             dst->type = htons(m->header.type);
             oxm_fields = (uint8_t*) &dst->oxm_fields;
             dst->length = htons(sizeof(struct ofp_match));
             if (src->length){
-                
                 oxm_len = oxm_put_match(b, m);
                 memcpy(oxm_fields, (uint8_t*) ofpbuf_pull(b,oxm_len), oxm_len);
                 dst->length = htons(oxm_len + ((sizeof(struct ofp_match )-4)));

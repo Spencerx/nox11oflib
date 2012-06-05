@@ -9,28 +9,7 @@ FlowMod::FlowMod() {
 	init_flow_mod();
 }
 
-void
-FlowMod::init_flow_mod(){
-
-    fm_msg.header.type = OFPT_FLOW_MOD;
-    fm_msg.cookie = 0x0000000000000000ULL;
-    fm_msg.cookie_mask = 0x0000000000000000ULL;
-    fm_msg.table_id = 0xff;
-    fm_msg.command = OFPFC_ADD;
-    fm_msg.idle_timeout = OFP_FLOW_PERMANENT;
-    fm_msg.hard_timeout = OFP_FLOW_PERMANENT;
-    fm_msg.priority = OFP_DEFAULT_PRIORITY;
-    fm_msg.buffer_id = 0xffffffff;
-    fm_msg.out_port = OFPP_ANY;
-    fm_msg.out_group = OFPG_ANY;
-    fm_msg.flags = 0x0000;
-    fm_msg.match = NULL;
-    fm_msg.instructions_num = 0;
-    fm_msg.instructions = NULL;
-}
-
-void
-FlowMod::init_flow_mod(uint64_t cookie, uint64_t cookie_mask, uint8_t table_id,
+FlowMod::FlowMod(uint64_t cookie, uint64_t cookie_mask, uint8_t table_id,
                        enum ofp_flow_mod_command cmd,uint16_t idlet, uint16_t hardt, 
                        uint16_t prio, uint32_t buff_id, uint32_t out_port, 
                        uint32_t out_group, uint16_t flags){
@@ -51,6 +30,28 @@ FlowMod::init_flow_mod(uint64_t cookie, uint64_t cookie_mask, uint8_t table_id,
     fm_msg.instructions_num = 0;
     fm_msg.instructions = NULL;
 }
+
+
+void
+FlowMod::init_flow_mod(){
+
+    fm_msg.header.type = OFPT_FLOW_MOD;
+    fm_msg.cookie = 0x0000000000000000ULL;
+    fm_msg.cookie_mask = 0x0000000000000000ULL;
+    fm_msg.table_id = 0xff;
+    fm_msg.command = OFPFC_ADD;
+    fm_msg.idle_timeout = OFP_FLOW_PERMANENT;
+    fm_msg.hard_timeout = OFP_FLOW_PERMANENT;
+    fm_msg.priority = OFP_DEFAULT_PRIORITY;
+    fm_msg.buffer_id = 0xffffffff;
+    fm_msg.out_port = OFPP_ANY;
+    fm_msg.out_group = OFPG_ANY;
+    fm_msg.flags = 0x0000;
+    fm_msg.match = NULL;
+    fm_msg.instructions_num = 0;
+    fm_msg.instructions = NULL;
+}
+
 
 void
 FlowMod::AddMatch(struct ofl_match *m){

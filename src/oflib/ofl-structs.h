@@ -262,7 +262,6 @@ template <typename T>
 void ofl_structs_match_put(struct ofl_match *match, uint32_t header, T value){
     struct ofl_match_tlv *m = (struct ofl_match_tlv *) malloc(sizeof (struct ofl_match_tlv));
     int len = sizeof(value);
-    
     m->header = header;
     m->value = (uint8_t*) malloc(len);
     memcpy(m->value, &value, len);

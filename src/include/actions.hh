@@ -25,6 +25,7 @@ public:
     template<typename T>
     void
     CreateSetField(std::string field, T* value){
+        acts = (struct ofl_action_header**) xrealloc(acts, sizeof(struct ofl_action_header *) * act_num);
         struct ofl_action_set_field *a = (struct ofl_action_set_field*) xmalloc(sizeof (struct ofl_action_set_field));
         a->field = (struct ofl_match_tlv*) xmalloc(sizeof(struct ofl_match_tlv));
         a->field->header = fields[field].first;

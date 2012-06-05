@@ -177,7 +177,7 @@ oxm_prereqs_ok(const struct oxm_field *field, const struct ofl_match *rule)
               memcpy(&eth_type, omt->value, sizeof(uint16_t));
               if (ntohs(field->dl_type[0]) == ntohs(eth_type)) {
                 return true;
-              } else if (ntohs(field->dl_type[1]) && ntohs(field->dl_type[1]) == eth_type) {
+              } else if (ntohs(field->dl_type[1]) && ntohs(field->dl_type[1]) == ntohs(eth_type)) {
                 return true;
               }
         }
@@ -410,7 +410,6 @@ oxm_pull_match(struct ofpbuf *buf, struct ofl_match * match_dst, int match_len)
     ofl_structs_match_init(match_dst);
     int i = 0;
     while ((header = oxm_entry_ok(p, match_len)) != 0) {
-        i++;
         unsigned length = OXM_LENGTH(header);
         const struct oxm_field *f;
         int error;
@@ -467,11 +466,13 @@ oxm_entry_ok(const void *p, unsigned int match_len)
     header = ntohl(header);
     payload_len = OXM_LENGTH(header);
     if (!payload_len) {
+        printf("It's here man\n");
         VLOG_DBG(LOG_MODULE, "oxm_entry %08"PRIx32" has invalid payload "
                     "length 0", header); 
         return 0;
     }
     if (match_len < payload_len + 4) {
+        printf("Here lies the problem %d %d \n\n", match_len, payload_len); 
         VLOG_DBG(LOG_MODULE, "%"PRIu32"-byte oxm_entry but only "
                     "%u bytes left in ox_match", payload_len + 4, match_len);
         return 0;
