@@ -81,6 +81,17 @@ public:
      /* Field is not present in the packet */
      *value = -1;
   }
+  
+  void get_Field(std::string name, uint8_t  value[ETH_ADDR_LEN] ){
+     struct ofl_match_tlv *omt;
+     HMAP_FOR_EACH_WITH_HASH(omt, struct ofl_match_tlv, hmap_node, hash_int(fields[name].first, 0),
+          &match.match_fields){
+		  memcpy(value, omt->value, ETH_ADDR_LEN);
+          return;   
+     }
+     /* Field is not present in the packet */
+     *value = -1;
+  }
   /** \brief String representation
    */
   const std::string to_string() const;
@@ -100,9 +111,9 @@ void Flow::Add_Field<std::string>(std::string name, std::string value){
     if(!fields.count(name))
        std::cout <<"Match field: "<< name << " is not supported "<< std::endl;
     else {
-        if(fields[name].first ==  ETH_ADDR_LEN){
+        if(fields[name].second ==  ETH_ADDR_LEN){
             ethernetaddr addr = ethernetaddr(value);
-            ofl_structs_match_put(&this->match, fields[name].first, addr.octet);
+            ofl_structs_match_put_eth(&this->match, fields[name].first, addr.octet);
         }
         else {
             struct in6_addr addr;

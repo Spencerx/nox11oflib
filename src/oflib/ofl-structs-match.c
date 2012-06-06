@@ -153,10 +153,9 @@ void
 ofl_structs_match_put_eth(struct ofl_match *match, uint32_t header, const uint8_t value[ETH_ADDR_LEN]){
     struct ofl_match_tlv *m = (struct ofl_match_tlv *) malloc(sizeof (struct ofl_match_tlv));
     int len = ETH_ADDR_LEN;
-    
     m->header = header;
     m->value = (uint8_t*) malloc(len);
-    memcpy(m->value, &value, len);
+    memcpy(m->value, value, len);
     hmap_insert(&match->match_fields,&m->hmap_node,hash_int(header, 0));
     match->header.length += len + 4;
 
@@ -166,11 +165,10 @@ void
 ofl_structs_match_put_eth_m(struct ofl_match *match, uint32_t header,const uint8_t value[ETH_ADDR_LEN],const uint8_t mask[ETH_ADDR_LEN]){
     struct ofl_match_tlv *m = (struct ofl_match_tlv *) malloc(sizeof (struct ofl_match_tlv));
     int len = ETH_ADDR_LEN;
-    
     m->header = header;
     m->value = (uint8_t*) malloc(len*2);
-    memcpy(m->value, &value, len);
-    memcpy(m->value + len, &mask, len);
+    memcpy(m->value, value, len);
+    memcpy(m->value + len, mask, len);
     hmap_insert(&match->match_fields,&m->hmap_node,hash_int(header, 0));
     match->header.length += len*2 + 4;
 
