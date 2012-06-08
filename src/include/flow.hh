@@ -69,6 +69,25 @@ public:
        ofl_structs_match_put_masked(&this->match, fields[name].first, value, mask);
     }
   }
+
+  void Add_Field(std::string name, uint8_t value[ETH_ADDR_LEN]){
+
+    if(!fields.count(name))
+       std::cout <<"Match field: "<< name << " is not supported "<< std::endl;
+    else {
+       ofl_structs_match_put_eth(&this->match, fields[name].first, value);
+    }
+  }
+
+  void Add_Field(std::string name, uint8_t value[ETH_ADDR_LEN],uint8_t  mask[ETH_ADDR_LEN]){
+
+    if(!fields.count(name))
+       std::cout <<"Match field: "<< name << " is not supported "<< std::endl;
+    else {
+       ofl_structs_match_put_eth_m(&this->match, fields[name].first, value, mask);
+    }
+  }
+ 
   
   template<typename T>
   void get_Field(std::string name, T *value ){

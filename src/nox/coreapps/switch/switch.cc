@@ -1,6 +1,4 @@
-/* Copyright 2008 (C) Nicira, Inc.
- *
- * This file is part of NOX.
+ /*// us file is part of NOX.
  *
  * NOX is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,7 +30,10 @@
 #include "ofp-msg-event.hh"
 #include "vlog.hh"
 #include "flowmod.hh"
+#include "datapath-join.hh"
+#include <stdio.h>
 
+#include <stdio.h>
 #include "netinet++/ethernetaddr.hh"
 #include "netinet++/ethernet.hh"
 
@@ -41,6 +42,7 @@
 
 using namespace vigil;
 using namespace vigil::container;
+using namespace std;
 
 namespace {
 
@@ -94,7 +96,7 @@ public:
     void install();
 
     Disposition handle(const Event&);
-
+    //Disposition handle_dp_join(const Event& e);
 private:
     typedef hash_set<Mac_source, Hash_mac_source> Source_table;
     Source_table sources;
@@ -116,6 +118,7 @@ Switch::configure(const Configuration* conf) {
     }
     
     register_handler(Ofp_msg_event::get_name(OFPT_PACKET_IN), boost::bind(&Switch::handle, this, _1));
+    
 }
 
 void
@@ -133,18 +136,19 @@ Switch::handle(const Event& e)
 
     /* drop all LLDP packets */
         uint16_t dl_type;
-        flow->get_Field("eth_type",&dl_type);
+        flow->get_Field<uint16_t>("eth_type",&dl_type);
         if (dl_type == ethernet::LLDP){
             return CONTINUE;
         }
        
     uint32_t in_port;
-    flow->get_Field("in_port", &in_port);        
-
+    flow->get_Field<uint32_t>("in_port", &in_port);        
+	
+   
     /* Learn the source. */
     uint8_t eth_src[6];
     flow->get_Field("eth_src", eth_src);
-    ethernetaddr dl_src(dl_src);
+    ethernetaddr dl_src(eth_src);
     if (!dl_src.is_multicast()) {
         Mac_source src(pi.dpid, dl_src);
         Source_table::iterator i = sources.insert(src).first;
@@ -161,35 +165,37 @@ Switch::handle(const Event& e)
 
     /* Figure out the destination. */
     int out_port = -1;        /* Flood by default. */
-    ethernetaddr dl_dst(eth_src);
+    uint8_t eth_dst[6];
+    flow->get_Field("eth_dst", eth_dst);
+    ethernetaddr dl_dst(eth_dst);
     if (!dl_dst.is_multicast()) {
         Mac_source dst(pi.dpid, dl_dst);
-        Source_table::iterator i(sources.find(dst));
+	Source_table::iterator i(sources.find(dst));
         if (i != sources.end()) {
             out_port = i->port;
         }
     }
-
+		
     /* Set up a flow if the output port is known. */
     if (setup_flows && out_port != -1) {
 
-        Flow  f;
-	    f.Add_Field("in_port", in_port);
-    	Actions *acts = new Actions();
+        
+	Flow  f;
+	f.Add_Field("in_port", in_port);
+	f.Add_Field("eth_src", eth_src);
+	f.Add_Field("eth_dst",eth_dst);
+	Actions *acts = new Actions();
         acts->CreateOutput(out_port);
         Instruction *inst =  new Instruction();
         inst->CreateApply(acts);
-        FlowMod *mod = new FlowMod(0x00ULL,0x00ULL, 0,OFPFC_ADD, 5, OFP_FLOW_PERMANENT, OFP_DEFAULT_PRIORITY,in->buffer_id, 
+        FlowMod *mod = new FlowMod(0x00ULL,0x00ULL, 0,OFPFC_ADD, 1, OFP_FLOW_PERMANENT, OFP_DEFAULT_PRIORITY,in->buffer_id, 
                                     OFPP_ANY, OFPG_ANY, ofd_flow_mod_flags());
         mod->AddMatch(&f.match);
-	    mod->AddInstructions(inst);
-        
+	mod->AddInstructions(inst);
         send_openflow_msg(pi.dpid, (struct ofl_msg_header *)&mod->fm_msg, 0/*xid*/, true/*block*/);
     }
-
     /* Send out packet if necessary. */
     if (!setup_flows || out_port == -1 || in->buffer_id == UINT32_MAX) {
-
         if (in->buffer_id == UINT32_MAX) {
             if (in->total_len != in->data_length) {
                 /* Control path didn't buffer the packet and didn't send us
@@ -208,4 +214,4 @@ Switch::handle(const Event& e)
 
 REGISTER_COMPONENT(container::Simple_component_factory<Switch>, Switch);
 
-} // unnamed namespace
+} // unnamed namespacennamed namespace
